@@ -1,4 +1,3 @@
-// Backend endpoint — update when backend is ready
 const API_URL = "http://localhost:3000/user/signup";
 
 const form = document.getElementById("signupForm");
@@ -59,7 +58,6 @@ function showMessage(text, type) {
   formMessage.className = `form-message ${type === "error" ? "error-msg" : "success-msg"}`;
 }
 
-// Clear field error as user types
 [nameInput, emailInput, passwordInput].forEach((input) =>
   input.addEventListener("input", () => setError(input, ""))
 );
