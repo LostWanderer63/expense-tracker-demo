@@ -45,4 +45,37 @@ async function signup(req, res) {
   }
 }
 
-module.exports = { signup };
+async function login(req, res) {
+  try {
+    const email = (req.body.email || "").trim().toLowerCase();
+    const password = req.body.password || "";
+
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password are required" });
+    }
+
+    const [rows] = await getPool().query(
+      "SELECT id, name, email, password FROM users WHERE email = ?",
+      [email]
+    );
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const user = rows[0];
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) {
+      return res.status(401).json({ message: "User not authorized" });
+    }
+
+    return res.status(200).json({
+      message: "User login successful",
+      user: { id: user.id, name: user.name, email: user.email },
+    });
+  } catch (err) {
+    console.error("Login error:", err);
+    return res.status(500).json({ message: "Something went wrong. Please try again." });
+  }
+}
+
+module.exports = { signup, login };
