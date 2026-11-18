@@ -1,4 +1,4 @@
-const API_URL = "http://localhost:3000/expense";
+const API_ORIGIN = "http://localhost:3000";
 const LOGIN_PAGE = "../login/login.html";
 
 const CATEGORY_STYLES = {
@@ -62,22 +62,8 @@ function logout() {
 
 document.getElementById("logoutBtn").addEventListener("click", logout);
 
-async function api(path, options = {}) {
-  const res = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-      ...options.headers,
-    },
-  });
-  const body = await res.json().catch(() => ({}));
-  if (res.status === 401) {
-    logout();
-    throw new Error(body.message || "Session expired");
-  }
-  if (!res.ok) throw new Error(body.message || `Request failed (${res.status})`);
-  return body;
+function api(path, options = {}) {
+  return fetchJSON(`/expense${path}`, options);
 }
 
 let toastTimer;
@@ -262,4 +248,127 @@ async function deleteExpense(id, li, btn) {
   }
 }
 
+const premiumBtn = document.getElementById("premiumBtn");
+const premiumBadge = document.getElementById("premiumBadge");
+const resultModal = document.getElementById("resultModal");
+
+function setPremium(isPremium) {
+  premiumBtn.classList.toggle("hidden", isPremium);
+  premiumBadge.classList.toggle("hidden", !isPremium);
+}
+
+const RESULT_VIEWS = {
+  SUCCESSFUL: {
+    icon: "✓",
+    cls: "success",
+    title: "Transaction successful",
+    text: "You are now a premium member. Enjoy the premium features!",
+  },
+  FAILED: {
+    icon: "✕",
+    cls: "failed",
+    title: "TRANSACTION FAILED",
+    text: "Your payment could not be completed. Please try again.",
+  },
+  PENDING: {
+    icon: "…",
+    cls: "pending",
+    title: "Payment pending",
+    text: "We are waiting for confirmation from the bank. Check back in a few minutes.",
+  },
+};
+
+function showResult(status) {
+  const view = RESULT_VIEWS[status] || RESULT_VIEWS.FAILED;
+  const icon = document.getElementById("resultIcon");
+  icon.textContent = view.icon;
+  icon.className = `modal-icon ${view.cls}`;
+  document.getElementById("resultTitle").textContent = view.title;
+  document.getElementById("resultText").textContent = view.text;
+  resultModal.classList.remove("hidden");
+  document.getElementById("resultClose").focus();
+}
+
+function closeResult() {
+  resultModal.classList.add("hidden");
+}
+
+document.getElementById("resultClose").addEventListener("click", closeResult);
+resultModal.addEventListener("click", (e) => {
+  if (e.target === resultModal) closeResult();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeResult();
+});
+
+async function verifyOrder(orderId) {
+  const { status } = await fetchJSON(`/purchase/status/${encodeURIComponent(orderId)}`);
+  if (status === "SUCCESSFUL") setPremium(true);
+  showResult(status);
+}
+
+async function fetchJSON(path, options = {}) {
+  const res = await fetch(`${API_ORIGIN}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      ...options.headers,
+    },
+  });
+  const body = await res.json().catch(() => ({}));
+  if (res.status === 401) {
+    logout();
+    throw new Error(body.message || "Session expired");
+  }
+  if (!res.ok) throw new Error(body.message || `Request failed (${res.status})`);
+  return body;
+}
+
+premiumBtn.addEventListener("click", async () => {
+  if (typeof window.Cashfree !== "function") {
+    toast("Payment service failed to load. Check your connection.", "error");
+    return;
+  }
+
+  premiumBtn.disabled = true;
+  try {
+    const order = await fetchJSON("/purchase/premium", { method: "POST" });
+    const checkout = window.Cashfree({ mode: order.mode });
+    const result = await checkout.checkout({
+      paymentSessionId: order.paymentSessionId,
+      redirectTarget: "_modal",
+    });
+
+    if (result && result.redirect) return;
+    await verifyOrder(order.orderId);
+  } catch (err) {
+    toast(errorMessage(err), "error");
+  } finally {
+    premiumBtn.disabled = false;
+  }
+});
+
+async function loadUser() {
+  try {
+    const { user } = await fetchJSON("/user/me");
+    setPremium(user.isPremium);
+  } catch {
+    premiumBtn.classList.remove("hidden");
+  }
+}
+
+async function handleReturnFromPayment() {
+  const params = new URLSearchParams(window.location.search);
+  const orderId = params.get("order_id");
+  if (!orderId) return;
+  history.replaceState(null, "", window.location.pathname);
+  try {
+    await verifyOrder(orderId);
+  } catch (err) {
+    toast(errorMessage(err), "error");
+  }
+}
+
+loadUser().then(handleReturnFromPayment);
 loadExpenses();

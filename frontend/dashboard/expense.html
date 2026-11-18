@@ -18,6 +18,8 @@
       </div>
       <div class="topbar-right">
         <span class="greeting" id="greeting"></span>
+        <button class="btn-premium hidden" id="premiumBtn">⭐ <span class="premium-label">Buy Premium Membership</span></button>
+        <span class="premium-badge hidden" id="premiumBadge">⭐ Premium</span>
         <button class="btn-ghost" id="logoutBtn">Logout</button>
       </div>
     </div>
@@ -101,6 +103,16 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+  <div class="modal-backdrop hidden" id="resultModal" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
+    <div class="modal">
+      <div class="modal-icon" id="resultIcon"></div>
+      <h3 class="modal-title" id="resultTitle"></h3>
+      <p class="modal-text" id="resultText"></p>
+      <button class="btn" id="resultClose">OK</button>
+    </div>
+  </div>
+
+  <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
   <script src="expense.js"></script>
 </body>
 </html>

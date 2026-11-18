@@ -84,4 +84,19 @@ async function login(req, res) {
   }
 }
 
-module.exports = { signup, login };
+async function getMe(req, res) {
+  try {
+    const [rows] = await getPool().query(
+      "SELECT id, name, email, is_premium FROM users WHERE id = ?",
+      [req.user.id]
+    );
+    if (rows.length === 0) return res.status(404).json({ message: "User not found" });
+    const { id, name, email, is_premium } = rows[0];
+    return res.status(200).json({ user: { id, name, email, isPremium: Boolean(is_premium) } });
+  } catch (err) {
+    console.error("Get me error:", err);
+    return res.status(500).json({ message: "Something went wrong. Please try again." });
+  }
+}
+
+module.exports = { signup, login, getMe };
