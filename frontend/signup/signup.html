@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Signup | Expense Tracker</title>
+  <link rel="stylesheet" href="signup.css" />
+</head>
+<body>
+  <main class="auth-card">
+    <h1 class="auth-title">Create account</h1>
+    <p class="auth-subtitle">Start tracking your expenses</p>
+
+    <form id="signupForm" novalidate>
+      <div class="field">
+        <label for="name">Enter your name</label>
+        <input type="text" id="name" name="name" autocomplete="name" placeholder="John Doe" required />
+        <small class="error" data-for="name"></small>
+      </div>
+
+      <div class="field">
+        <label for="email">Enter your email</label>
+        <input type="email" id="email" name="email" autocomplete="email" placeholder="you@example.com" required />
+        <small class="error" data-for="email"></small>
+      </div>
+
+      <div class="field">
+        <label for="password">Enter your password</label>
+        <div class="password-wrap">
+          <input type="password" id="password" name="password" autocomplete="new-password" placeholder="Min 6 characters" required minlength="6" />
+          <button type="button" class="toggle-pass" id="togglePass" aria-label="Show password">Show</button>
+        </div>
+        <small class="error" data-for="password"></small>
+      </div>
+
+      <button type="submit" class="btn" id="signupBtn">Signup</button>
+      <p class="form-message" id="formMessage" role="status" aria-live="polite"></p>
+    </form>
+
+    <a href="../login/login.html" class="auth-link">Existing User - Login</a>
+  </main>
+
+  <script src="signup.js"></script>
+</body>
+</html>
