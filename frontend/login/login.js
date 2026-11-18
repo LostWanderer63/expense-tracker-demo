@@ -1,5 +1,9 @@
 const API_URL = "http://localhost:3000/user/login";
 
+if (localStorage.getItem("token")) {
+  window.location.replace("../dashboard/expense.html");
+}
+
 const form = document.getElementById("loginForm");
 const emailInput = document.getElementById("email");
 const passwordInput = document.getElementById("password");
@@ -75,8 +79,10 @@ form.addEventListener("submit", async (e) => {
       throw new Error(body.message || `Login failed (${res.status})`);
     }
 
-    showMessage("Login successful!", "success");
-    form.reset();
+    localStorage.setItem("token", body.token);
+    localStorage.setItem("userName", body.user.name);
+    showMessage("Login successful! Redirecting...", "success");
+    window.location.href = "../dashboard/expense.html";
   } catch (err) {
     showMessage(
       err instanceof TypeError ? "Cannot reach server. Try again later." : err.message,

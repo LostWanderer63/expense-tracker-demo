@@ -1,4 +1,5 @@
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 const { getPool } = require("../config/db");
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -68,8 +69,13 @@ async function login(req, res) {
       return res.status(401).json({ message: "User not authorized" });
     }
 
+    const token = jwt.sign({ userId: user.id, name: user.name }, process.env.JWT_SECRET, {
+      expiresIn: "1d",
+    });
+
     return res.status(200).json({
       message: "User login successful",
+      token,
       user: { id: user.id, name: user.name, email: user.email },
     });
   } catch (err) {
