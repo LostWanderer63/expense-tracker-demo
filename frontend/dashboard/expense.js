@@ -223,6 +223,7 @@ form.addEventListener("submit", async (e) => {
     categoryInput.selectedIndex = 0;
     amountInput.focus();
     toast("Expense added");
+    refreshLeaderboardIfOpen();
   } catch (err) {
     formMessage.textContent = errorMessage(err);
     formMessage.className = "form-message error-msg";
@@ -242,6 +243,7 @@ async function deleteExpense(id, li, btn) {
       render();
     }, 200);
     toast("Expense deleted");
+    refreshLeaderboardIfOpen();
   } catch (err) {
     btn.disabled = false;
     toast(errorMessage(err), "error");
@@ -251,11 +253,95 @@ async function deleteExpense(id, li, btn) {
 const premiumBtn = document.getElementById("premiumBtn");
 const premiumBadge = document.getElementById("premiumBadge");
 const resultModal = document.getElementById("resultModal");
+const premiumBanner = document.getElementById("premiumBanner");
+const leaderboardBtn = document.getElementById("leaderboardBtn");
+const leaderboardCard = document.getElementById("leaderboardCard");
+const leaderboardList = document.getElementById("leaderboardList");
+const leaderboardState = document.getElementById("leaderboardState");
+
+let currentUserId = null;
 
 function setPremium(isPremium) {
   premiumBtn.classList.toggle("hidden", isPremium);
   premiumBadge.classList.toggle("hidden", !isPremium);
+  premiumBanner.classList.toggle("hidden", !isPremium);
+  if (!isPremium) hideLeaderboard();
 }
+
+const MEDALS = ["🥇", "🥈", "🥉"];
+
+function renderLeaderboard(rows) {
+  leaderboardList.replaceChildren(
+    ...rows.map((row, i) => {
+      const li = document.createElement("li");
+      li.className = `leader-item${row.id === currentUserId ? " me" : ""}`;
+
+      const rank = document.createElement("span");
+      rank.className = `leader-rank${i < 3 ? " medal" : ""}`;
+      rank.textContent = i < 3 ? MEDALS[i] : i + 1;
+      rank.setAttribute("aria-label", `Rank ${i + 1}`);
+
+      const name = document.createElement("span");
+      name.className = "leader-name";
+      name.textContent = row.name;
+      name.title = row.name;
+      if (row.id === currentUserId) {
+        const you = document.createElement("span");
+        you.className = "leader-you";
+        you.textContent = "You";
+        name.appendChild(you);
+      }
+
+      const total = document.createElement("span");
+      total.className = "leader-total";
+      total.textContent = currency.format(row.totalExpense);
+
+      li.append(rank, name, total);
+      return li;
+    })
+  );
+  leaderboardState.classList.toggle("hidden", rows.length > 0);
+  if (!rows.length) leaderboardState.textContent = "No users yet";
+}
+
+async function loadLeaderboard() {
+  if (!leaderboardList.children.length) {
+    leaderboardState.textContent = "Loading leaderboard...";
+    leaderboardState.classList.remove("hidden");
+  }
+  try {
+    const { leaderboard } = await fetchJSON("/premium/showleaderboard");
+    renderLeaderboard(leaderboard);
+  } catch (err) {
+    leaderboardList.replaceChildren();
+    leaderboardState.textContent = errorMessage(err);
+    leaderboardState.classList.remove("hidden");
+  }
+}
+
+function hideLeaderboard() {
+  leaderboardCard.classList.add("hidden");
+  leaderboardBtn.textContent = "Show Leaderboard";
+  leaderboardBtn.setAttribute("aria-expanded", "false");
+}
+
+function refreshLeaderboardIfOpen() {
+  if (!leaderboardCard.classList.contains("hidden")) loadLeaderboard();
+}
+
+leaderboardBtn.addEventListener("click", () => {
+  if (!leaderboardCard.classList.contains("hidden")) {
+    hideLeaderboard();
+    return;
+  }
+  leaderboardCard.classList.remove("hidden");
+  leaderboardBtn.textContent = "Hide Leaderboard";
+  leaderboardBtn.setAttribute("aria-expanded", "true");
+  leaderboardCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  loadLeaderboard();
+});
+
+document.getElementById("leaderboardRefresh").addEventListener("click", loadLeaderboard);
 
 const RESULT_VIEWS = {
   SUCCESSFUL: {
@@ -352,6 +438,7 @@ premiumBtn.addEventListener("click", async () => {
 async function loadUser() {
   try {
     const { user } = await fetchJSON("/user/me");
+    currentUserId = user.id;
     setPremium(user.isPremium);
   } catch {
     premiumBtn.classList.remove("hidden");

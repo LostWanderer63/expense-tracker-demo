@@ -41,6 +41,17 @@
       </div>
     </section>
 
+    <section class="premium-banner hidden" id="premiumBanner">
+      <div class="premium-banner-text">
+        <span class="premium-banner-icon">⭐</span>
+        <div>
+          <strong>You are a premium user</strong>
+          <small>See how your spending compares with others.</small>
+        </div>
+      </div>
+      <button class="btn-leaderboard" id="leaderboardBtn" aria-expanded="false" aria-controls="leaderboardCard">Show Leaderboard</button>
+    </section>
+
     <div class="layout">
       <section class="card form-card">
         <h2 class="card-title">Add expense</h2>
@@ -82,22 +93,33 @@
         </form>
       </section>
 
-      <section class="card list-card">
-        <div class="list-header">
-          <h2 class="card-title">Your expenses</h2>
-          <select id="filter" class="filter" aria-label="Filter by category">
-            <option value="">All categories</option>
-          </select>
-        </div>
+      <div class="right-col">
+        <section class="card leaderboard-card hidden" id="leaderboardCard">
+          <div class="list-header">
+            <h2 class="card-title">🏆 Leaderboard</h2>
+            <button class="btn-ghost btn-sm" id="leaderboardRefresh">Refresh</button>
+          </div>
+          <div class="state" id="leaderboardState">Loading leaderboard...</div>
+          <ol class="leaderboard-list" id="leaderboardList"></ol>
+        </section>
 
-        <div class="state" id="loadingState">Loading expenses...</div>
-        <div class="state empty hidden" id="emptyState">
-          <span class="empty-icon">🧾</span>
-          <p>No expenses yet</p>
-          <small>Add your first expense to get started.</small>
-        </div>
-        <ul class="expense-list" id="expenseList"></ul>
-      </section>
+        <section class="card list-card">
+          <div class="list-header">
+            <h2 class="card-title">Your expenses</h2>
+            <select id="filter" class="filter" aria-label="Filter by category">
+              <option value="">All categories</option>
+            </select>
+          </div>
+
+          <div class="state" id="loadingState">Loading expenses...</div>
+          <div class="state empty hidden" id="emptyState">
+            <span class="empty-icon">🧾</span>
+            <p>No expenses yet</p>
+            <small>Add your first expense to get started.</small>
+          </div>
+          <ul class="expense-list" id="expenseList"></ul>
+        </section>
+      </div>
     </div>
   </main>
 

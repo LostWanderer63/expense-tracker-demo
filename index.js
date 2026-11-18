@@ -6,6 +6,7 @@ const { initDB } = require("./config/db");
 const userRoutes = require("./routes/userRoutes");
 const expenseRoutes = require("./routes/expenseRoutes");
 const purchaseRoutes = require("./routes/purchaseRoutes");
+const premiumRoutes = require("./routes/premiumRoutes");
 
 if (!process.env.JWT_SECRET) {
   console.error("JWT_SECRET is missing in .env");
@@ -24,6 +25,7 @@ app.use(express.static(path.join(__dirname, "frontend")));
 app.use("/user", userRoutes);
 app.use("/expense", expenseRoutes);
 app.use("/purchase", purchaseRoutes);
+app.use("/premium", premiumRoutes);
 
 app.use((req, res) => res.status(404).json({ message: "Route not found" }));
 
