@@ -1,4 +1,5 @@
-const { Expense } = require("../models");
+const { sequelize } = require("../config/db");
+const { User, Expense } = require("../models");
 
 const CATEGORIES = [
   "Food",
@@ -53,11 +54,17 @@ async function addExpense(req, res) {
       return res.status(400).json({ message: "Invalid category" });
     }
 
-    const created = await Expense.create({
-      userId: req.user.id,
-      amount: Math.round(amount * 100) / 100,
-      description,
-      category,
+    const rounded = Math.round(amount * 100) / 100;
+
+    const created = await sequelize.transaction(async (transaction) => {
+      await User.increment(
+        { totalExpense: rounded },
+        { where: { id: req.user.id }, transaction }
+      );
+      return Expense.create(
+        { userId: req.user.id, amount: rounded, description, category },
+        { transaction }
+      );
     });
 
     const expense = await Expense.findByPk(created.id, { attributes: EXPENSE_FIELDS });
@@ -76,9 +83,24 @@ async function deleteExpense(req, res) {
       return res.status(400).json({ message: "Invalid expense id" });
     }
 
-    const deleted = await Expense.destroy({ where: { id, userId: req.user.id } });
+    const deleted = await sequelize.transaction(async (transaction) => {
+      const expense = await Expense.findOne({
+        where: { id, userId: req.user.id },
+        attributes: ["id", "amount"],
+        lock: transaction.LOCK.UPDATE,
+        transaction,
+      });
+      if (!expense) return false;
 
-    if (deleted === 0) {
+      await User.decrement(
+        { totalExpense: expense.amount },
+        { where: { id: req.user.id }, transaction }
+      );
+      await expense.destroy({ transaction });
+      return true;
+    });
+
+    if (!deleted) {
       return res.status(404).json({ message: "Expense not found" });
     }
 

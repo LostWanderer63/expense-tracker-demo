@@ -50,6 +50,17 @@ async function initDB() {
       defaultValue: false,
     });
   }
+  if (!userColumns.total_expense) {
+    await queryInterface.addColumn("users", "total_expense", {
+      type: Sequelize.DECIMAL(12, 2),
+      allowNull: false,
+      defaultValue: 0,
+    });
+    await sequelize.query(`
+      UPDATE users u
+      SET total_expense = (SELECT COALESCE(SUM(e.amount), 0) FROM expenses e WHERE e.user_id = u.id)
+    `);
+  }
 
   return sequelize;
 }

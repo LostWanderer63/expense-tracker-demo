@@ -28,6 +28,12 @@ const User = sequelize.define(
       defaultValue: false,
       field: "is_premium",
     },
+    totalExpense: {
+      type: DataTypes.DECIMAL(12, 2),
+      allowNull: false,
+      defaultValue: 0,
+      field: "total_expense",
+    },
   },
   {
     tableName: "users",
