@@ -34,6 +34,7 @@ async function getExpenses(req, res) {
 }
 
 async function addExpense(req, res) {
+  let transaction;
   try {
     const amount = Number(req.body.amount);
     const description = (req.body.description || "").trim();
@@ -57,56 +58,57 @@ async function addExpense(req, res) {
 
     const rounded = Math.round(amount * 100) / 100;
 
-    const created = await sequelize.transaction(async (transaction) => {
-      await User.increment(
-        { totalExpense: rounded },
-        { where: { id: req.user.id }, transaction }
-      );
-      return Expense.create(
-        { userId: req.user.id, amount: rounded, description, category },
-        { transaction }
-      );
-    });
+    transaction = await sequelize.transaction();
+    await User.increment(
+      { totalExpense: rounded },
+      { where: { id: req.user.id }, transaction }
+    );
+    const created = await Expense.create(
+      { userId: req.user.id, amount: rounded, description, category },
+      { transaction }
+    );
+    await transaction.commit();
 
     const expense = await Expense.findByPk(created.id, { attributes: EXPENSE_FIELDS });
 
     return res.status(201).json({ message: "Expense added", expense });
   } catch (err) {
+    if (transaction && !transaction.finished) await transaction.rollback();
     console.error("Add expense error:", err);
     return res.status(500).json({ message: "Could not add expense" });
   }
 }
 
 async function deleteExpense(req, res) {
+  let transaction;
   try {
     const id = Number(req.params.id);
     if (!Number.isInteger(id) || id <= 0) {
       return res.status(400).json({ message: "Invalid expense id" });
     }
 
-    const deleted = await sequelize.transaction(async (transaction) => {
-      const expense = await Expense.findOne({
-        where: { id, userId: req.user.id },
-        attributes: ["id", "amount"],
-        lock: transaction.LOCK.UPDATE,
-        transaction,
-      });
-      if (!expense) return false;
-
-      await User.decrement(
-        { totalExpense: expense.amount },
-        { where: { id: req.user.id }, transaction }
-      );
-      await expense.destroy({ transaction });
-      return true;
+    transaction = await sequelize.transaction();
+    const expense = await Expense.findOne({
+      where: { id, userId: req.user.id },
+      attributes: ["id", "amount"],
+      lock: transaction.LOCK.UPDATE,
+      transaction,
     });
-
-    if (!deleted) {
+    if (!expense) {
+      await transaction.rollback();
       return res.status(404).json({ message: "Expense not found" });
     }
 
+    await User.decrement(
+      { totalExpense: expense.amount },
+      { where: { id: req.user.id }, transaction }
+    );
+    await expense.destroy({ transaction });
+    await transaction.commit();
+
     return res.status(200).json({ message: "Expense deleted" });
   } catch (err) {
+    if (transaction && !transaction.finished) await transaction.rollback();
     console.error("Delete expense error:", err);
     return res.status(500).json({ message: "Could not delete expense" });
   }

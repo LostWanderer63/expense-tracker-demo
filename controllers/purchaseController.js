@@ -10,6 +10,7 @@ function cashfreeError(err) {
 }
 
 async function createPremiumOrder(req, res) {
+  let transaction;
   try {
     const user = await User.findByPk(req.user.id, {
       attributes: ["id", "name", "email", "isPremium"],
@@ -36,12 +37,17 @@ async function createPremiumOrder(req, res) {
       order_note: "Premium membership",
     });
 
-    await user.createOrder({
-      orderId,
-      amount: PREMIUM_PRICE,
-      status: "PENDING",
-      paymentSessionId: data.payment_session_id,
-    });
+    transaction = await sequelize.transaction();
+    await user.createOrder(
+      {
+        orderId,
+        amount: PREMIUM_PRICE,
+        status: "PENDING",
+        paymentSessionId: data.payment_session_id,
+      },
+      { transaction }
+    );
+    await transaction.commit();
 
     return res.status(201).json({
       orderId,
@@ -50,6 +56,7 @@ async function createPremiumOrder(req, res) {
       mode: environment === CFEnvironment.PRODUCTION ? "production" : "sandbox",
     });
   } catch (err) {
+    if (transaction && !transaction.finished) await transaction.rollback();
     console.error("Create order error:", cashfreeError(err));
     return res.status(500).json({ message: "Could not start payment. Please try again." });
   }
@@ -57,6 +64,7 @@ async function createPremiumOrder(req, res) {
 
 async function getOrderStatus(req, res) {
   const orderId = req.params.orderId;
+  let transaction;
 
   try {
     const order = await Order.findOne({ where: { orderId, userId: req.user.id } });
@@ -73,17 +81,18 @@ async function getOrderStatus(req, res) {
     else if (payments.some((p) => p.payment_status === "PENDING")) status = "PENDING";
     else status = "FAILED";
 
-    if (status === "SUCCESSFUL") {
-      await sequelize.transaction(async (transaction) => {
-        await order.update({ status: "SUCCESSFUL" }, { transaction });
+    if (status !== "PENDING") {
+      transaction = await sequelize.transaction();
+      await order.update({ status }, { transaction });
+      if (status === "SUCCESSFUL") {
         await User.update({ isPremium: true }, { where: { id: req.user.id }, transaction });
-      });
-    } else if (status === "FAILED") {
-      await order.update({ status: "FAILED" });
+      }
+      await transaction.commit();
     }
 
     return res.status(200).json({ orderId, status });
   } catch (err) {
+    if (transaction && !transaction.finished) await transaction.rollback();
     console.error("Order status error:", cashfreeError(err));
     return res.status(500).json({ message: "Could not verify payment" });
   }

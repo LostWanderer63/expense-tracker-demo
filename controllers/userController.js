@@ -1,10 +1,12 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const { sequelize } = require("../config/db");
 const { User } = require("../models");
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 async function signup(req, res) {
+  let transaction;
   try {
     const name = (req.body.name || "").trim();
     const email = (req.body.email || "").trim().toLowerCase();
@@ -26,13 +28,16 @@ async function signup(req, res) {
     }
 
     const hashed = await bcrypt.hash(password, 10);
-    const user = await User.create({ name, email, password: hashed });
+    transaction = await sequelize.transaction();
+    const user = await User.create({ name, email, password: hashed }, { transaction });
+    await transaction.commit();
 
     return res.status(201).json({
       message: "User created successfully",
       user: { id: user.id, name: user.name, email: user.email },
     });
   } catch (err) {
+    if (transaction && !transaction.finished) await transaction.rollback();
     if (err.name === "SequelizeUniqueConstraintError") {
       return res.status(409).json({ message: "User already exists" });
     }
