@@ -177,6 +177,13 @@
   overflow-wrap: anywhere;
 }
 
+.report-table .row-note {
+  display: block;
+  color: var(--muted);
+  font-size: 0.78rem;
+  margin-top: 2px;
+}
+
 .report-table .subtotal td {
   background: var(--sheet-subtotal);
   font-weight: 700;

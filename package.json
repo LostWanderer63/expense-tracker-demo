@@ -8,7 +8,9 @@
     "prestart": "npm run build",
     "start": "node index.js",
     "predev": "npm run build",
-    "dev": "nodemon index.js --ignore client/ --ignore frontend/"
+    "dev": "nodemon index.js --ignore client/ --ignore frontend/",
+    "migrate": "sequelize-cli db:migrate",
+    "migrate:undo": "sequelize-cli db:migrate:undo"
   },
   "keywords": [],
   "author": "",
@@ -31,6 +33,7 @@
   "devDependencies": {
     "@vitejs/plugin-react": "^4.7.0",
     "nodemon": "^3.1.14",
+    "sequelize-cli": "^6.6.5",
     "vite": "^6.4.6"
   }
 }

@@ -4,7 +4,7 @@ import { CATEGORIES, CATEGORY_STYLES } from "../format.js";
 
 const SUGGEST_DELAY_MS = 600;
 const SUGGEST_MIN_CHARS = 3;
-const EMPTY = { amount: "", description: "", category: "" };
+const EMPTY = { amount: "", description: "", category: "", note: "" };
 
 export default function ExpenseForm({ onAdded }) {
   const [values, setValues] = useState(EMPTY);
@@ -102,7 +102,9 @@ export default function ExpenseForm({ onAdded }) {
     if (!description) next.description = "Description is required";
     if (!values.category) next.category = "Choose a category";
     setErrors(next);
-    return Object.keys(next).length ? null : { amount, description, category: values.category };
+    return Object.keys(next).length
+      ? null
+      : { amount, description, category: values.category, note: values.note.trim() };
   }
 
   function resetSuggestion() {
@@ -199,6 +201,21 @@ export default function ExpenseForm({ onAdded }) {
             </small>
           )}
           <small className="error">{errors.category}</small>
+        </div>
+
+        <div className="field">
+          <label htmlFor="note">
+            Note <span className="optional">(optional)</span>
+          </label>
+          <input
+            type="text"
+            id="note"
+            maxLength={255}
+            placeholder="e.g. Paid by card"
+            value={values.note}
+            onChange={(e) => setField("note", e.target.value)}
+          />
+          <small className="error">{errors.note}</small>
         </div>
 
         <button type="submit" className="btn" disabled={submitting}>

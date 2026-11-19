@@ -26,6 +26,11 @@ const Expense = sequelize.define(
       type: DataTypes.STRING(255),
       allowNull: false,
     },
+    // Added by migrations/20261119095758-add-note-to-expenses.js
+    note: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
   },
   {
     tableName: "expenses",

@@ -14,7 +14,7 @@ const CATEGORIES = [
   "Other",
 ];
 
-const EXPENSE_FIELDS = ["id", "amount", "description", "category", "createdAt"];
+const EXPENSE_FIELDS = ["id", "amount", "description", "category", "note", "createdAt"];
 
 const DEFAULT_PAGE_SIZE = 10;
 const MAX_PAGE_SIZE = 50;
@@ -120,6 +120,7 @@ async function addExpense(req, res) {
     const amount = Number(req.body.amount);
     const description = (req.body.description || "").trim();
     const category = req.body.category;
+    const note = typeof req.body.note === "string" ? req.body.note.trim() : "";
 
     if (!Number.isFinite(amount) || amount <= 0) {
       return res.status(400).json({ message: "Amount must be a positive number" });
@@ -136,6 +137,9 @@ async function addExpense(req, res) {
     if (!CATEGORIES.includes(category)) {
       return res.status(400).json({ message: "Invalid category" });
     }
+    if (note.length > 255) {
+      return res.status(400).json({ message: "Note must be under 255 characters" });
+    }
 
     const rounded = Math.round(amount * 100) / 100;
 
@@ -145,7 +149,7 @@ async function addExpense(req, res) {
       { where: { id: req.user.id }, transaction }
     );
     const created = await Expense.create(
-      { userId: req.user.id, amount: rounded, description, category },
+      { userId: req.user.id, amount: rounded, description, category, note: note || null },
       { transaction }
     );
     await transaction.commit();

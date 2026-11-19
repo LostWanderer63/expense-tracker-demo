@@ -161,16 +161,16 @@ function renderDetail(list) {
     let dayExpense = 0;
     dayEntries.forEach((e) => {
       const date = dayFmt.format(e.date);
-      tbody.appendChild(
-        row([
-          [date],
-          [e.description, "desc"],
-          [e.category],
-          [e.isIncome ? money.format(e.amount) : "", "num"],
-          [e.isIncome ? "" : money.format(e.amount), "num"],
-        ])
-      );
-      exportRows.push([date, e.description, e.category, e.isIncome ? e.amount : "", e.isIncome ? "" : e.amount]);
+      const tr = row([
+        [date],
+        [e.description, "desc"],
+        [e.category],
+        [e.isIncome ? money.format(e.amount) : "", "num"],
+        [e.isIncome ? "" : money.format(e.amount), "num"],
+      ]);
+      if (e.note) tr.children[1].appendChild(el("span", "row-note", e.note));
+      tbody.appendChild(tr);
+      exportRows.push([date, e.description, e.category, e.isIncome ? e.amount : "", e.isIncome ? "" : e.amount, e.note || ""]);
       if (e.isIncome) dayIncome += e.amount;
       else dayExpense += e.amount;
     });
@@ -201,7 +201,7 @@ function renderDetail(list) {
   );
 
   exportRows.push(["Total", "", "", totalIncome, totalExpense], ["Savings", "", "", "", totalIncome - totalExpense]);
-  currentRows = { columns: ["Date", "Description", "Category", "Income", "Expense"], rows: exportRows };
+  currentRows = { columns: ["Date", "Description", "Category", "Income", "Expense", "Note"], rows: exportRows };
 }
 
 function renderYearly(list, year) {

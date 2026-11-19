@@ -21,6 +21,11 @@ function ExpenseItem({ expense, onDelete }) {
         <div className="expense-desc" title={expense.description}>
           {expense.description}
         </div>
+        {expense.note && (
+          <div className="expense-note" title={expense.note}>
+            {expense.note}
+          </div>
+        )}
         <div className="expense-meta">
           <span className="badge" style={{ background: style.bg, color: style.color }}>
             {style.name}
