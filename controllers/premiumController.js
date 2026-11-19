@@ -1,14 +1,22 @@
-const { getPool } = require("../config/db");
+const { fn, col, literal } = require("sequelize");
+const { User, Expense } = require("../models");
 
 async function getLeaderboard(req, res) {
   try {
-    const [rows] = await getPool().query(`
-      SELECT u.id, u.name, COALESCE(SUM(e.amount), 0) AS totalExpense
-      FROM users u
-      LEFT JOIN expenses e ON e.user_id = u.id
-      GROUP BY u.id, u.name
-      ORDER BY totalExpense DESC, u.name ASC
-    `);
+    const rows = await User.findAll({
+      attributes: [
+        "id",
+        "name",
+        [fn("COALESCE", fn("SUM", col("expenses.amount")), 0), "totalExpense"],
+      ],
+      include: [{ model: Expense, as: "expenses", attributes: [] }],
+      group: ["User.id", "User.name"],
+      order: [
+        [literal("totalExpense"), "DESC"],
+        ["name", "ASC"],
+      ],
+      raw: true,
+    });
 
     const leaderboard = rows.map((r) => ({
       id: r.id,

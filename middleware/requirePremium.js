@@ -1,9 +1,9 @@
-const { getPool } = require("../config/db");
+const { User } = require("../models");
 
 async function requirePremium(req, res, next) {
   try {
-    const [rows] = await getPool().query("SELECT is_premium FROM users WHERE id = ?", [req.user.id]);
-    if (!rows[0] || !rows[0].is_premium) {
+    const user = await User.findByPk(req.user.id, { attributes: ["isPremium"] });
+    if (!user || !user.isPremium) {
       return res.status(403).json({ message: "This feature is for premium members only" });
     }
     next();

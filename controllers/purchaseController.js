@@ -1,5 +1,6 @@
 const crypto = require("crypto");
-const { getPool } = require("../config/db");
+const { sequelize } = require("../config/db");
+const { User, Order } = require("../models");
 const { cashfree, environment, CFEnvironment } = require("../config/cashfree");
 
 const PREMIUM_PRICE = 499;
@@ -10,13 +11,11 @@ function cashfreeError(err) {
 
 async function createPremiumOrder(req, res) {
   try {
-    const pool = getPool();
-    const [users] = await pool.query("SELECT id, name, email, is_premium FROM users WHERE id = ?", [
-      req.user.id,
-    ]);
-    const user = users[0];
+    const user = await User.findByPk(req.user.id, {
+      attributes: ["id", "name", "email", "isPremium"],
+    });
     if (!user) return res.status(404).json({ message: "User not found" });
-    if (user.is_premium) return res.status(400).json({ message: "You are already a premium member" });
+    if (user.isPremium) return res.status(400).json({ message: "You are already a premium member" });
 
     const orderId = `order_${user.id}_${Date.now()}_${crypto.randomBytes(3).toString("hex")}`;
     const appUrl = process.env.APP_URL || `http://localhost:${process.env.PORT || 3000}`;
@@ -37,10 +36,12 @@ async function createPremiumOrder(req, res) {
       order_note: "Premium membership",
     });
 
-    await pool.query(
-      "INSERT INTO orders (order_id, user_id, amount, status, payment_session_id) VALUES (?, ?, ?, 'PENDING', ?)",
-      [orderId, user.id, PREMIUM_PRICE, data.payment_session_id]
-    );
+    await user.createOrder({
+      orderId,
+      amount: PREMIUM_PRICE,
+      status: "PENDING",
+      paymentSessionId: data.payment_session_id,
+    });
 
     return res.status(201).json({
       orderId,
@@ -56,14 +57,9 @@ async function createPremiumOrder(req, res) {
 
 async function getOrderStatus(req, res) {
   const orderId = req.params.orderId;
-  const pool = getPool();
 
   try {
-    const [orders] = await pool.query(
-      "SELECT order_id, status FROM orders WHERE order_id = ? AND user_id = ?",
-      [orderId, req.user.id]
-    );
-    const order = orders[0];
+    const order = await Order.findOne({ where: { orderId, userId: req.user.id } });
     if (!order) return res.status(404).json({ message: "Order not found" });
 
     if (order.status !== "PENDING") {
@@ -78,20 +74,12 @@ async function getOrderStatus(req, res) {
     else status = "FAILED";
 
     if (status === "SUCCESSFUL") {
-      const conn = await pool.getConnection();
-      try {
-        await conn.beginTransaction();
-        await conn.query("UPDATE orders SET status = 'SUCCESSFUL' WHERE order_id = ?", [orderId]);
-        await conn.query("UPDATE users SET is_premium = TRUE WHERE id = ?", [req.user.id]);
-        await conn.commit();
-      } catch (err) {
-        await conn.rollback();
-        throw err;
-      } finally {
-        conn.release();
-      }
+      await sequelize.transaction(async (transaction) => {
+        await order.update({ status: "SUCCESSFUL" }, { transaction });
+        await User.update({ isPremium: true }, { where: { id: req.user.id }, transaction });
+      });
     } else if (status === "FAILED") {
-      await pool.query("UPDATE orders SET status = 'FAILED' WHERE order_id = ?", [orderId]);
+      await order.update({ status: "FAILED" });
     }
 
     return res.status(200).json({ orderId, status });

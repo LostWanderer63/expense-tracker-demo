@@ -1,77 +1,57 @@
 const mysql = require("mysql2/promise");
+const { Sequelize } = require("sequelize");
 
 const DB_NAME = process.env.DB_NAME || "expense_tracker";
+const DB_HOST = process.env.DB_HOST || "localhost";
+const DB_PORT = Number(process.env.DB_PORT) || 3306;
+const DB_USER = process.env.DB_USER || "root";
+const DB_PASSWORD = process.env.DB_PASSWORD || "abcd@1234";
 
-let pool;
+function localOffset() {
+  const minutes = -new Date().getTimezoneOffset();
+  const sign = minutes >= 0 ? "+" : "-";
+  const abs = Math.abs(minutes);
+  const hh = String(Math.floor(abs / 60)).padStart(2, "0");
+  const mm = String(abs % 60).padStart(2, "0");
+  return `${sign}${hh}:${mm}`;
+}
+
+const sequelize = new Sequelize(DB_NAME, DB_USER, DB_PASSWORD, {
+  host: DB_HOST,
+  port: DB_PORT,
+  dialect: "mysql",
+  timezone: process.env.DB_TIMEZONE || localOffset(),
+  logging: false,
+  dialectOptions: { decimalNumbers: true },
+  pool: { max: 10, min: 0, idle: 10000 },
+});
 
 async function initDB() {
-  const baseConfig = {
-    host: process.env.DB_HOST || "localhost",
-    port: Number(process.env.DB_PORT) || 3306,
-    user: process.env.DB_USER || "root",
-    password: process.env.DB_PASSWORD || "abcd@1234",
-  };
-
-  const conn = await mysql.createConnection(baseConfig);
+  const conn = await mysql.createConnection({
+    host: DB_HOST,
+    port: DB_PORT,
+    user: DB_USER,
+    password: DB_PASSWORD,
+  });
   await conn.query(`CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\``);
   await conn.end();
 
-  pool = mysql.createPool({ ...baseConfig, database: DB_NAME, connectionLimit: 10 });
+  await sequelize.authenticate();
 
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      name VARCHAR(100) NOT NULL,
-      email VARCHAR(255) NOT NULL UNIQUE,
-      password VARCHAR(255) NOT NULL,
-      is_premium BOOLEAN NOT NULL DEFAULT FALSE,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
+  require("../models");
+  await sequelize.sync();
 
-  const [premiumCol] = await pool.query(
-    "SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'users' AND COLUMN_NAME = 'is_premium'",
-    [DB_NAME]
-  );
-  if (premiumCol.length === 0) {
-    await pool.query("ALTER TABLE users ADD COLUMN is_premium BOOLEAN NOT NULL DEFAULT FALSE AFTER password");
+  const queryInterface = sequelize.getQueryInterface();
+  const userColumns = await queryInterface.describeTable("users");
+  if (!userColumns.is_premium) {
+    await queryInterface.addColumn("users", "is_premium", {
+      type: Sequelize.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    });
   }
 
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS expenses (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      user_id INT NOT NULL,
-      amount DECIMAL(10, 2) NOT NULL,
-      description VARCHAR(255) NOT NULL,
-      category VARCHAR(255) NOT NULL,
-      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      INDEX idx_user (user_id),
-      CONSTRAINT fk_expenses_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-    )
-  `);
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS orders (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      order_id VARCHAR(64) NOT NULL UNIQUE,
-      user_id INT NOT NULL,
-      amount DECIMAL(10, 2) NOT NULL,
-      status ENUM('PENDING', 'SUCCESSFUL', 'FAILED') NOT NULL DEFAULT 'PENDING',
-      payment_session_id VARCHAR(255),
-      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      INDEX idx_order_user (user_id),
-      CONSTRAINT fk_orders_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-    )
-  `);
-
-  return pool;
+  return sequelize;
 }
 
-function getPool() {
-  if (!pool) throw new Error("DB not initialized");
-  return pool;
-}
-
-module.exports = { initDB, getPool };
+module.exports = { sequelize, initDB };

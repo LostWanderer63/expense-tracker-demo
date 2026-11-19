@@ -1,4 +1,4 @@
-const { getPool } = require("../config/db");
+const { Expense } = require("../models");
 
 const CATEGORIES = [
   "Food",
@@ -12,13 +12,18 @@ const CATEGORIES = [
   "Other",
 ];
 
+const EXPENSE_FIELDS = ["id", "amount", "description", "category", "createdAt"];
+
 async function getExpenses(req, res) {
   try {
-    const [rows] = await getPool().query(
-      "SELECT id, amount, description, category, createdAt FROM expenses WHERE user_id = ? ORDER BY createdAt DESC, id DESC",
-      [req.user.id]
-    );
-    const expenses = rows.map((r) => ({ ...r, amount: Number(r.amount) }));
+    const expenses = await Expense.findAll({
+      where: { userId: req.user.id },
+      attributes: EXPENSE_FIELDS,
+      order: [
+        ["createdAt", "DESC"],
+        ["id", "DESC"],
+      ],
+    });
     return res.status(200).json({ expenses });
   } catch (err) {
     console.error("Get expenses error:", err);
@@ -48,21 +53,16 @@ async function addExpense(req, res) {
       return res.status(400).json({ message: "Invalid category" });
     }
 
-    const rounded = Math.round(amount * 100) / 100;
-    const [result] = await getPool().query(
-      "INSERT INTO expenses (user_id, amount, description, category) VALUES (?, ?, ?, ?)",
-      [req.user.id, rounded, description, category]
-    );
-
-    const [rows] = await getPool().query(
-      "SELECT id, amount, description, category, createdAt FROM expenses WHERE id = ?",
-      [result.insertId]
-    );
-
-    return res.status(201).json({
-      message: "Expense added",
-      expense: { ...rows[0], amount: Number(rows[0].amount) },
+    const created = await Expense.create({
+      userId: req.user.id,
+      amount: Math.round(amount * 100) / 100,
+      description,
+      category,
     });
+
+    const expense = await Expense.findByPk(created.id, { attributes: EXPENSE_FIELDS });
+
+    return res.status(201).json({ message: "Expense added", expense });
   } catch (err) {
     console.error("Add expense error:", err);
     return res.status(500).json({ message: "Could not add expense" });
@@ -76,12 +76,9 @@ async function deleteExpense(req, res) {
       return res.status(400).json({ message: "Invalid expense id" });
     }
 
-    const [result] = await getPool().query(
-      "DELETE FROM expenses WHERE id = ? AND user_id = ?",
-      [id, req.user.id]
-    );
+    const deleted = await Expense.destroy({ where: { id, userId: req.user.id } });
 
-    if (result.affectedRows === 0) {
+    if (deleted === 0) {
       return res.status(404).json({ message: "Expense not found" });
     }
 

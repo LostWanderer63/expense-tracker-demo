@@ -1,6 +1,6 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const { getPool } = require("../config/db");
+const { User } = require("../models");
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -20,25 +20,20 @@ async function signup(req, res) {
       return res.status(400).json({ message: "Password must be at least 6 characters" });
     }
 
-    const pool = getPool();
-
-    const [existing] = await pool.query("SELECT id FROM users WHERE email = ?", [email]);
-    if (existing.length > 0) {
+    const existing = await User.findOne({ where: { email }, attributes: ["id"] });
+    if (existing) {
       return res.status(409).json({ message: "User already exists" });
     }
 
     const hashed = await bcrypt.hash(password, 10);
-    const [result] = await pool.query(
-      "INSERT INTO users (name, email, password) VALUES (?, ?, ?)",
-      [name, email, hashed]
-    );
+    const user = await User.create({ name, email, password: hashed });
 
     return res.status(201).json({
       message: "User created successfully",
-      user: { id: result.insertId, name, email },
+      user: { id: user.id, name: user.name, email: user.email },
     });
   } catch (err) {
-    if (err.code === "ER_DUP_ENTRY") {
+    if (err.name === "SequelizeUniqueConstraintError") {
       return res.status(409).json({ message: "User already exists" });
     }
     console.error("Signup error:", err);
@@ -55,15 +50,14 @@ async function login(req, res) {
       return res.status(400).json({ message: "Email and password are required" });
     }
 
-    const [rows] = await getPool().query(
-      "SELECT id, name, email, password FROM users WHERE email = ?",
-      [email]
-    );
-    if (rows.length === 0) {
+    const user = await User.findOne({
+      where: { email },
+      attributes: ["id", "name", "email", "password"],
+    });
+    if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const user = rows[0];
     const match = await bcrypt.compare(password, user.password);
     if (!match) {
       return res.status(401).json({ message: "User not authorized" });
@@ -86,13 +80,13 @@ async function login(req, res) {
 
 async function getMe(req, res) {
   try {
-    const [rows] = await getPool().query(
-      "SELECT id, name, email, is_premium FROM users WHERE id = ?",
-      [req.user.id]
-    );
-    if (rows.length === 0) return res.status(404).json({ message: "User not found" });
-    const { id, name, email, is_premium } = rows[0];
-    return res.status(200).json({ user: { id, name, email, isPremium: Boolean(is_premium) } });
+    const user = await User.findByPk(req.user.id, {
+      attributes: ["id", "name", "email", "isPremium"],
+    });
+    if (!user) return res.status(404).json({ message: "User not found" });
+    return res.status(200).json({
+      user: { id: user.id, name: user.name, email: user.email, isPremium: Boolean(user.isPremium) },
+    });
   } catch (err) {
     console.error("Get me error:", err);
     return res.status(500).json({ message: "Something went wrong. Please try again." });
