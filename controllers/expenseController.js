@@ -16,17 +16,98 @@ const CATEGORIES = [
 
 const EXPENSE_FIELDS = ["id", "amount", "description", "category", "createdAt"];
 
+const DEFAULT_PAGE_SIZE = 10;
+const MAX_PAGE_SIZE = 50;
+
+function startOfMonth() {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), 1);
+}
+
+async function getSummary(userId) {
+  const [row] = await Expense.findAll({
+    where: { userId },
+    attributes: [
+      [sequelize.fn("COUNT", sequelize.col("id")), "count"],
+      [sequelize.fn("COALESCE", sequelize.fn("SUM", sequelize.col("amount")), 0), "total"],
+      [
+        sequelize.fn(
+          "COALESCE",
+          sequelize.fn(
+            "SUM",
+            sequelize.literal(`CASE WHEN createdAt >= ${sequelize.escape(startOfMonth())} THEN amount ELSE 0 END`)
+          ),
+          0
+        ),
+        "thisMonth",
+      ],
+    ],
+    raw: true,
+  });
+  return {
+    count: Number(row.count),
+    total: Number(row.total),
+    thisMonth: Number(row.thisMonth),
+  };
+}
+
+// GET /expense                 -> all expenses (used by the reports page)
+// GET /expense?page=2&limit=10 -> one page, plus pagination info and summary
+// Optional &category=Food filters the page.
 async function getExpenses(req, res) {
   try {
-    const expenses = await Expense.findAll({
-      where: { userId: req.user.id },
-      attributes: EXPENSE_FIELDS,
-      order: [
-        ["createdAt", "DESC"],
-        ["id", "DESC"],
-      ],
+    const order = [
+      ["createdAt", "DESC"],
+      ["id", "DESC"],
+    ];
+
+    if (req.query.page === undefined) {
+      const expenses = await Expense.findAll({
+        where: { userId: req.user.id },
+        attributes: EXPENSE_FIELDS,
+        order,
+      });
+      return res.status(200).json({ expenses });
+    }
+
+    const page = Number(req.query.page);
+    const limit = req.query.limit === undefined ? DEFAULT_PAGE_SIZE : Number(req.query.limit);
+    if (!Number.isInteger(page) || page < 1) {
+      return res.status(400).json({ message: "page must be a positive whole number" });
+    }
+    if (!Number.isInteger(limit) || limit < 1 || limit > MAX_PAGE_SIZE) {
+      return res.status(400).json({ message: `limit must be between 1 and ${MAX_PAGE_SIZE}` });
+    }
+
+    const category = req.query.category;
+    if (category !== undefined && category !== "" && !CATEGORIES.includes(category)) {
+      return res.status(400).json({ message: "Invalid category" });
+    }
+
+    const where = { userId: req.user.id };
+    if (category) where.category = category;
+
+    const [{ count: total, rows }, summary] = await Promise.all([
+      Expense.findAndCountAll({
+        where,
+        attributes: EXPENSE_FIELDS,
+        order,
+        limit,
+        offset: (page - 1) * limit,
+      }),
+      getSummary(req.user.id),
+    ]);
+
+    return res.status(200).json({
+      expenses: rows,
+      pagination: {
+        page,
+        limit,
+        total,
+        lastPage: Math.max(1, Math.ceil(total / limit)),
+      },
+      summary,
     });
-    return res.status(200).json({ expenses });
   } catch (err) {
     console.error("Get expenses error:", err);
     return res.status(500).json({ message: "Could not load expenses" });
