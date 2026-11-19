@@ -216,3 +216,24 @@ body {
 .btn-secondary:hover {
   background: rgba(79, 70, 229, 0.08);
 }
+
+.hidden {
+  display: none !important;
+}
+
+.link-btn {
+  display: block;
+  margin: 14px auto 0;
+  background: none;
+  border: none;
+  color: var(--primary);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 6px;
+}
+
+.link-btn:hover {
+  text-decoration: underline;
+}

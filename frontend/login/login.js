@@ -1,4 +1,5 @@
-const API_URL = "http://localhost:3000/user/login";
+const API_ORIGIN = "http://localhost:3000";
+const API_URL = `${API_ORIGIN}/user/login`;
 
 if (localStorage.getItem("token")) {
   window.location.replace("../dashboard/expense.html");
@@ -91,5 +92,58 @@ form.addEventListener("submit", async (e) => {
   } finally {
     loginBtn.disabled = false;
     loginBtn.textContent = "Login";
+  }
+});
+
+// --- Forgot password ---
+const loginView = document.getElementById("loginView");
+const forgotView = document.getElementById("forgotView");
+const forgotForm = document.getElementById("forgotForm");
+const forgotEmailInput = document.getElementById("forgotEmail");
+const forgotBtn = document.getElementById("forgotBtn");
+const forgotMessage = document.getElementById("forgotMessage");
+
+function showForgotView(show) {
+  loginView.classList.toggle("hidden", show);
+  forgotView.classList.toggle("hidden", !show);
+  if (show) {
+    forgotEmailInput.value = emailInput.value.trim();
+    setError(forgotEmailInput, "");
+    forgotMessage.textContent = "";
+    forgotEmailInput.focus();
+  } else {
+    emailInput.focus();
+  }
+}
+
+document.getElementById("forgotLink").addEventListener("click", () => showForgotView(true));
+document.getElementById("backToLogin").addEventListener("click", () => showForgotView(false));
+forgotEmailInput.addEventListener("input", () => setError(forgotEmailInput, ""));
+
+forgotForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  forgotMessage.textContent = "";
+
+  const email = forgotEmailInput.value.trim();
+  if (!email) return setError(forgotEmailInput, "Email is required");
+  if (!EMAIL_REGEX.test(email)) return setError(forgotEmailInput, "Enter a valid email");
+
+  forgotBtn.disabled = true;
+  forgotBtn.textContent = "Sending...";
+
+  try {
+    const { data } = await axios.post(`${API_ORIGIN}/password/forgotpassword`, { email });
+    forgotMessage.textContent =
+      data.message || "If an account exists for that email, a reset link has been sent.";
+    forgotMessage.className = "form-message success-msg";
+    forgotForm.reset();
+  } catch (err) {
+    forgotMessage.textContent = err.response
+      ? err.response.data?.message || `Request failed (${err.response.status})`
+      : "Cannot reach server. Try again later.";
+    forgotMessage.className = "form-message error-msg";
+  } finally {
+    forgotBtn.disabled = false;
+    forgotBtn.textContent = "Send reset link";
   }
 });

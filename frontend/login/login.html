@@ -8,6 +8,7 @@
 </head>
 <body>
   <main class="auth-card">
+    <section id="loginView">
     <h1 class="auth-title">Welcome back</h1>
     <p class="auth-subtitle">Log in to track your expenses</p>
 
@@ -31,10 +32,32 @@
       <p class="form-message" id="formMessage" role="status" aria-live="polite"></p>
     </form>
 
+    <button type="button" class="link-btn" id="forgotLink">Forgot password?</button>
+
     <div class="divider">New user?</div>
     <a href="../signup/signup.html" class="btn-secondary">Signup</a>
+    </section>
+
+    <section id="forgotView" class="hidden">
+      <h1 class="auth-title">Forgot password</h1>
+      <p class="auth-subtitle">Enter your account email and we'll send you a link to reset your password.</p>
+
+      <form id="forgotForm" novalidate>
+        <div class="field">
+          <label for="forgotEmail">Email</label>
+          <input type="email" id="forgotEmail" name="email" autocomplete="email" placeholder="you@example.com" required />
+          <small class="error" data-for="forgotEmail"></small>
+        </div>
+
+        <button type="submit" class="btn" id="forgotBtn">Send reset link</button>
+        <p class="form-message" id="forgotMessage" role="status" aria-live="polite"></p>
+      </form>
+
+      <button type="button" class="link-btn" id="backToLogin">← Back to login</button>
+    </section>
   </main>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.7.7/axios.min.js"></script>
   <script src="login.js"></script>
 </body>
 </html>
