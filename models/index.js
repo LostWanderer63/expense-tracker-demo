@@ -1,6 +1,7 @@
 const User = require("./User");
 const Expense = require("./Expense");
 const Order = require("./Order");
+const ForgotPasswordRequest = require("./ForgotPasswordRequest");
 
 const userForeignKey = { name: "userId", field: "user_id", allowNull: false };
 
@@ -10,4 +11,11 @@ Expense.belongsTo(User, { foreignKey: userForeignKey, as: "user" });
 User.hasMany(Order, { foreignKey: userForeignKey, as: "orders", onDelete: "CASCADE" });
 Order.belongsTo(User, { foreignKey: userForeignKey, as: "user" });
 
-module.exports = { User, Expense, Order };
+User.hasMany(ForgotPasswordRequest, {
+  foreignKey: userForeignKey,
+  as: "forgotPasswordRequests",
+  onDelete: "CASCADE",
+});
+ForgotPasswordRequest.belongsTo(User, { foreignKey: userForeignKey, as: "user" });
+
+module.exports = { User, Expense, Order, ForgotPasswordRequest };
