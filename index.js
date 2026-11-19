@@ -8,6 +8,7 @@ const expenseRoutes = require("./routes/expenseRoutes");
 const purchaseRoutes = require("./routes/purchaseRoutes");
 const premiumRoutes = require("./routes/premiumRoutes");
 const passwordRoutes = require("./routes/passwordRoutes");
+const noteRoutes = require("./routes/noteRoutes");
 
 if (!process.env.JWT_SECRET) {
   console.error("JWT_SECRET is missing in .env");
@@ -28,6 +29,7 @@ app.use("/expense", expenseRoutes);
 app.use("/purchase", purchaseRoutes);
 app.use("/premium", premiumRoutes);
 app.use("/password", passwordRoutes);
+app.use("/notes", noteRoutes);
 
 app.use((req, res) => res.status(404).json({ message: "Route not found" }));
 

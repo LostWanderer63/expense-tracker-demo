@@ -93,6 +93,13 @@ body {
   transition: background 0.15s, border-color 0.15s;
 }
 
+a.btn-ghost {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .btn-ghost:hover {
   background: var(--bg);
   border-color: var(--muted);
@@ -729,7 +736,8 @@ body {
     gap: 16px;
   }
 
-  .premium-label {
+  .premium-label,
+  .reports-label {
     display: none;
   }
 

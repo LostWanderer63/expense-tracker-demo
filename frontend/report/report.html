@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reports | Expense Tracker</title>
+  <script>
+    if (!localStorage.getItem("token")) window.location.replace("../login/login.html");
+  </script>
+  <link rel="stylesheet" href="../css/expense.css" />
+  <link rel="stylesheet" href="../css/report.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-logo">₹</span>
+        <span class="brand-name">Expense Tracker</span>
+      </div>
+      <div class="topbar-right">
+        <a href="../dashboard/expense.html" class="btn-ghost">← Dashboard</a>
+        <button class="btn-ghost" id="logoutBtn">Logout</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card report-toolbar">
+      <div class="view-tabs" role="tablist" aria-label="Report period">
+        <button class="view-tab" role="tab" data-view="daily">Daily</button>
+        <button class="view-tab" role="tab" data-view="weekly">Weekly</button>
+        <button class="view-tab" role="tab" data-view="monthly">Monthly</button>
+        <button class="view-tab" role="tab" data-view="yearly">Yearly</button>
+      </div>
+
+      <div class="period-nav">
+        <button class="btn-ghost nav-btn" id="prevBtn" aria-label="Previous period">‹</button>
+        <span class="period-label" id="periodLabel" aria-live="polite"></span>
+        <button class="btn-ghost nav-btn" id="nextBtn" aria-label="Next period">›</button>
+        <button class="btn-ghost btn-sm" id="todayBtn">Today</button>
+      </div>
+
+      <div class="download-wrap">
+        <button class="btn-download" id="downloadBtn" disabled>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+          Download
+        </button>
+        <small class="download-note" id="downloadNote">⭐ Premium feature</small>
+      </div>
+    </section>
+
+    <section class="card report-sheet">
+      <h1 class="report-title">Day to Day Expenses</h1>
+      <p class="report-generated" id="generatedAt"></p>
+      <h2 class="report-period" id="reportHeading"></h2>
+
+      <div class="state" id="loadingState">Loading report...</div>
+      <div class="state empty hidden" id="emptyState">
+        <span class="empty-icon">📄</span>
+        <p>No entries for this period</p>
+        <small>Use the arrows to look at another period.</small>
+      </div>
+
+      <div class="table-wrap hidden" id="tableWrap">
+        <table class="report-table" id="reportTable"></table>
+      </div>
+      <p class="report-note">Entries in the Salary category count as income; everything else counts as an expense.</p>
+
+      <h2 class="report-subheading" id="notesHeading">Notes Report</h2>
+
+      <form class="note-form" id="noteForm" novalidate>
+        <label class="visually-hidden" for="noteDate">Note date</label>
+        <input type="date" id="noteDate" required />
+        <label class="visually-hidden" for="noteText">Note</label>
+        <input type="text" id="noteText" maxlength="500" placeholder="Add a note, e.g. Gave advance for construction" required />
+        <button type="submit" class="btn-note" id="noteBtn">Add note</button>
+      </form>
+      <p class="form-message error-msg" id="noteError" role="alert"></p>
+
+      <div class="state hidden" id="notesState"></div>
+      <div class="table-wrap hidden" id="notesWrap">
+        <table class="report-table notes-table">
+          <thead>
+            <tr><th scope="col" class="col-date">Date</th><th scope="col">Notes</th><th scope="col" class="col-action"><span class="visually-hidden">Delete</span></th></tr>
+          </thead>
+          <tbody id="notesBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="report.js"></script>
+</body>
+</html>

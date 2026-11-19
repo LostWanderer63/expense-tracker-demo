@@ -1,0 +1,376 @@
+:root {
+  --sheet-head: #3f8f9c;
+  --sheet-subtotal: #e2f1ef;
+  --sheet-stripe: #f6f8f8;
+  --sheet-line: #cfd8da;
+  --income: #2e7d32;
+  --expense: #d64545;
+  --savings: #1f5fa8;
+}
+
+/* ---------- toolbar ---------- */
+
+.report-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 20px;
+  padding: 16px 20px;
+}
+
+.view-tabs {
+  display: inline-flex;
+  background: var(--bg);
+  border-radius: 10px;
+  padding: 4px;
+  gap: 2px;
+}
+
+.view-tab {
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--muted);
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.view-tab:hover {
+  color: var(--text);
+}
+
+.view-tab.active {
+  background: var(--card);
+  color: var(--primary);
+  box-shadow: 0 1px 3px rgba(17, 24, 39, 0.12);
+}
+
+.period-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-btn {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.period-label {
+  min-width: 170px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.download-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.btn-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #fff;
+  background: var(--sheet-head);
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+
+.btn-download:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+
+.btn-download:disabled {
+  background: var(--input-border);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.download-note {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+/* ---------- report sheet ---------- */
+
+.report-sheet {
+  padding: 28px 24px;
+}
+
+.report-title {
+  text-align: center;
+  color: var(--sheet-head);
+  font-size: 1.5rem;
+  margin-bottom: 6px;
+}
+
+.report-generated {
+  font-size: 0.75rem;
+  color: #6d3fa0;
+  margin-bottom: 18px;
+}
+
+.report-period {
+  text-align: center;
+  font-size: 1.05rem;
+  margin-bottom: 16px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--sheet-line);
+}
+
+.report-table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.report-table th {
+  background: var(--sheet-head);
+  color: #fff;
+  font-weight: 600;
+  text-align: center;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.report-table td {
+  padding: 7px 10px;
+  border: 1px solid var(--sheet-line);
+  vertical-align: top;
+}
+
+.report-table tbody tr:nth-child(even):not(.subtotal) {
+  background: var(--sheet-stripe);
+}
+
+.report-table td.num,
+.report-table th.num {
+  text-align: right;
+}
+
+.report-table td.desc {
+  max-width: 260px;
+  overflow-wrap: anywhere;
+}
+
+.report-table .subtotal td {
+  background: var(--sheet-subtotal);
+  font-weight: 700;
+}
+
+.report-table .total td {
+  background: var(--sheet-subtotal);
+  font-weight: 700;
+}
+
+.report-table .total .label {
+  color: var(--muted);
+}
+
+.report-table .income {
+  color: var(--income);
+}
+
+.report-table .expense {
+  color: var(--expense);
+}
+
+.report-table .savings-total,
+.report-table .savings td {
+  color: var(--savings);
+  font-weight: 700;
+}
+
+.report-table .savings td {
+  background: var(--sheet-subtotal);
+}
+
+.report-note {
+  margin-top: 14px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+/* ---------- notes ---------- */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.report-subheading {
+  text-align: center;
+  font-size: 0.95rem;
+  margin: 32px 0 12px;
+}
+
+.note-form {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.note-form input {
+  padding: 9px 12px;
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--text);
+  background: #fff;
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  outline: none;
+}
+
+.note-form input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
+
+.note-form input[type="text"] {
+  flex: 1;
+  min-width: 0;
+}
+
+.btn-note {
+  padding: 9px 16px;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #fff;
+  background: var(--sheet-head);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-note:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.note-form + .form-message {
+  text-align: left;
+  margin: 0 0 8px;
+  min-height: 1em;
+}
+
+.notes-table {
+  min-width: 0;
+}
+
+.notes-table .col-date {
+  width: 120px;
+  white-space: nowrap;
+}
+
+.notes-table .col-action {
+  width: 40px;
+  text-align: center;
+  padding: 4px;
+}
+
+.note-delete {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 1.2rem;
+  line-height: 1;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.note-delete:hover {
+  background: #fee2e2;
+  color: var(--expense);
+}
+
+@media (max-width: 760px) {
+  .report-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .view-tabs {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .period-nav {
+    justify-content: space-between;
+  }
+
+  .period-label {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .download-wrap {
+    align-items: stretch;
+  }
+
+  .btn-download {
+    justify-content: center;
+  }
+
+  .download-note {
+    text-align: center;
+  }
+}
+
+@media (max-width: 600px) {
+  .report-sheet {
+    padding: 20px 14px;
+  }
+
+  .report-title {
+    font-size: 1.3rem;
+  }
+
+  .view-tab {
+    padding: 8px 6px;
+  }
+
+  .note-form {
+    flex-wrap: wrap;
+  }
+
+  .note-form input[type="text"] {
+    flex-basis: 100%;
+    order: -1;
+  }
+
+  .note-form input[type="date"] {
+    flex: 1;
+  }
+}
