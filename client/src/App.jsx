@@ -7,13 +7,33 @@ import ExpenseList from "./components/ExpenseList.jsx";
 import Leaderboard from "./components/Leaderboard.jsx";
 import ResultModal from "./components/ResultModal.jsx";
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE_OPTIONS = [5, 8, 10, 20, 30, 40];
+const DEFAULT_PAGE_SIZE = 10;
+const PAGE_SIZE_KEY = "expensesPerPage";
+
+function readPageSize() {
+  try {
+    const saved = Number(localStorage.getItem(PAGE_SIZE_KEY));
+    return PAGE_SIZE_OPTIONS.includes(saved) ? saved : DEFAULT_PAGE_SIZE;
+  } catch {
+    return DEFAULT_PAGE_SIZE;
+  }
+}
+
+function savePageSize(size) {
+  try {
+    localStorage.setItem(PAGE_SIZE_KEY, String(size));
+  } catch {
+    /* storage unavailable; the choice just won't survive a refresh */
+  }
+}
 
 export default function App() {
   const [user, setUser] = useState(null);
   const [userFailed, setUserFailed] = useState(false);
 
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(readPageSize);
   const [category, setCategory] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
   const [data, setData] = useState({ expenses: [], pagination: null, summary: null });
@@ -33,7 +53,7 @@ export default function App() {
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
-    const params = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
+    const params = new URLSearchParams({ page: String(page), limit: String(pageSize) });
     if (category) params.set("category", category);
 
     fetchJSON(`/expense?${params}`, { signal: controller.signal })
@@ -54,11 +74,19 @@ export default function App() {
       });
 
     return () => controller.abort();
-  }, [page, category, reloadKey]);
+  }, [page, pageSize, category, reloadKey]);
 
   function changePage(next) {
     setPage(next);
     document.querySelector(".list-card")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  // Keep the first expense the user was looking at on screen.
+  function changePageSize(next) {
+    const firstIndex = (page - 1) * pageSize;
+    setPageSize(next);
+    setPage(Math.floor(firstIndex / next) + 1);
+    savePageSize(next);
   }
 
   function changeCategory(next) {
@@ -226,6 +254,9 @@ export default function App() {
               category={category}
               onCategoryChange={changeCategory}
               onPageChange={changePage}
+              pageSize={pageSize}
+              pageSizeOptions={PAGE_SIZE_OPTIONS}
+              onPageSizeChange={changePageSize}
               onDelete={handleDelete}
             />
           </div>

@@ -54,6 +54,9 @@ export default function ExpenseList({
   category,
   onCategoryChange,
   onPageChange,
+  pageSize,
+  pageSizeOptions,
+  onPageSizeChange,
   onDelete,
 }) {
   const firstLoad = loading && !pagination;
@@ -101,6 +104,9 @@ export default function ExpenseList({
               total={pagination.total}
               limit={pagination.limit}
               onChange={onPageChange}
+              pageSize={pageSize}
+              pageSizeOptions={pageSizeOptions}
+              onPageSizeChange={onPageSizeChange}
               disabled={loading}
             />
           )}

@@ -11,7 +11,17 @@ function pageItems(page, lastPage) {
   return items;
 }
 
-export default function Pagination({ page, lastPage, total, limit, onChange, disabled }) {
+export default function Pagination({
+  page,
+  lastPage,
+  total,
+  limit,
+  onChange,
+  pageSize,
+  pageSizeOptions,
+  onPageSizeChange,
+  disabled,
+}) {
   if (total === 0) return null;
 
   const from = (page - 1) * limit + 1;
@@ -19,11 +29,27 @@ export default function Pagination({ page, lastPage, total, limit, onChange, dis
 
   return (
     <nav className="pagination" aria-label="Expense pages">
-      <p className="pagination-info">
-        Showing <strong>{from}–{to}</strong> of <strong>{total}</strong>
-        <span className="pagination-sep">·</span>
-        Page {page} of {lastPage}
-      </p>
+      <div className="pagination-meta">
+        <p className="pagination-info">
+          Showing <strong>{from}–{to}</strong> of <strong>{total}</strong>
+          <span className="pagination-sep">·</span>
+          Page {page} of {lastPage}
+        </p>
+        <label className="page-size">
+          <span>Rows per page</span>
+          <select
+            value={pageSize}
+            onChange={(e) => onPageSizeChange(Number(e.target.value))}
+            disabled={disabled}
+          >
+            {pageSizeOptions.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
 
       {lastPage > 1 && (
         <div className="pagination-controls">
