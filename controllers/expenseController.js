@@ -1,5 +1,6 @@
 const { sequelize } = require("../config/db");
 const { User, Expense } = require("../models");
+const geminiCategorizer = require("../services/geminiCategorizer");
 
 const CATEGORIES = [
   "Food",
@@ -111,4 +112,29 @@ async function deleteExpense(req, res) {
   }
 }
 
-module.exports = { getExpenses, addExpense, deleteExpense, CATEGORIES };
+async function suggestCategory(req, res) {
+  const description = (req.body.description || "").trim();
+
+  if (!description) {
+    return res.status(400).json({ message: "Description is required" });
+  }
+  if (description.length > 255) {
+    return res.status(400).json({ message: "Description must be under 255 characters" });
+  }
+  if (!geminiCategorizer.isConfigured()) {
+    return res.status(503).json({ message: "AI suggestions are not configured" });
+  }
+
+  try {
+    const category = await geminiCategorizer.suggestCategory(description, CATEGORIES);
+    if (!category) {
+      return res.status(502).json({ message: "Could not suggest a category" });
+    }
+    return res.status(200).json({ category });
+  } catch (err) {
+    console.error("Suggest category error:", err.message || err);
+    return res.status(502).json({ message: "Could not suggest a category" });
+  }
+}
+
+module.exports = { getExpenses, addExpense, deleteExpense, suggestCategory, CATEGORIES };

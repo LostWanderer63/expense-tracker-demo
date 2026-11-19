@@ -181,6 +181,81 @@ function setError(input, message) {
   input.addEventListener("input", () => setError(input, ""))
 );
 
+// --- AI category suggestion (Gemini, via backend) ---
+const aiHint = document.getElementById("aiHint");
+const SUGGEST_DELAY_MS = 600;
+const SUGGEST_MIN_CHARS = 3;
+let suggestTimer;
+let suggestController = null;
+let lastSuggestedFor = "";
+let categoryChosenByUser = false;
+let aiAvailable = true;
+
+function setAiHint(text, state = "") {
+  aiHint.textContent = text;
+  aiHint.className = `ai-hint ${state}`.trim();
+  aiHint.classList.toggle("hidden", !text);
+}
+
+function resetSuggestion() {
+  clearTimeout(suggestTimer);
+  if (suggestController) suggestController.abort();
+  suggestController = null;
+  lastSuggestedFor = "";
+  categoryChosenByUser = false;
+  setAiHint("");
+}
+
+async function requestSuggestion(description) {
+  if (suggestController) suggestController.abort();
+  const controller = new AbortController();
+  suggestController = controller;
+  setAiHint("✨ Suggesting a category...", "loading");
+
+  try {
+    const { category } = await api("/suggest-category", {
+      method: "POST",
+      body: JSON.stringify({ description }),
+      signal: controller.signal,
+    });
+    if (suggestController !== controller) return;
+    lastSuggestedFor = description;
+
+    if (categoryChosenByUser) {
+      setAiHint(categoryInput.value === category ? "" : `✨ AI suggests ${category}`);
+      return;
+    }
+    categoryInput.value = category;
+    setError(categoryInput, "");
+    setAiHint(`✨ ${category} suggested by AI — change it if needed`, "done");
+  } catch (err) {
+    if (err.name === "AbortError" || suggestController !== controller) return;
+    if (/not configured/i.test(err.message)) aiAvailable = false;
+    setAiHint("");
+  } finally {
+    if (suggestController === controller) suggestController = null;
+  }
+}
+
+descInput.addEventListener("input", () => {
+  clearTimeout(suggestTimer);
+  if (!aiAvailable) return;
+  const description = descInput.value.trim();
+  if (description.length < SUGGEST_MIN_CHARS) {
+    if (suggestController) suggestController.abort();
+    setAiHint("");
+    return;
+  }
+  if (description === lastSuggestedFor) return;
+  suggestTimer = setTimeout(() => requestSuggestion(description), SUGGEST_DELAY_MS);
+});
+
+categoryInput.addEventListener("change", (e) => {
+  if (!e.isTrusted) return;
+  categoryChosenByUser = true;
+  setAiHint("");
+});
+
 function validate() {
   const amount = Number(amountInput.value);
   const description = descInput.value.trim();
@@ -221,6 +296,7 @@ form.addEventListener("submit", async (e) => {
     render();
     form.reset();
     categoryInput.selectedIndex = 0;
+    resetSuggestion();
     amountInput.focus();
     toast("Expense added");
     refreshLeaderboardIfOpen();

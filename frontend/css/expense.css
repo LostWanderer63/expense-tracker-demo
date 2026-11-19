@@ -234,6 +234,16 @@ body {
   padding-left: 30px;
 }
 
+.ai-hint {
+  font-size: 0.8rem;
+  margin-top: 6px;
+  color: var(--primary);
+}
+
+.ai-hint.loading {
+  color: var(--muted);
+}
+
 .error {
   color: var(--error);
   font-size: 0.8rem;
