@@ -1,14 +1,15 @@
 const { Cashfree, CFEnvironment } = require("cashfree-pg");
+const env = require("./env");
 
 const environment =
-  (process.env.CASHFREE_ENV || "SANDBOX").toUpperCase() === "PRODUCTION"
+  env.cashfree.env === "PRODUCTION"
     ? CFEnvironment.PRODUCTION
     : CFEnvironment.SANDBOX;
 
 const cashfree = new Cashfree(
   environment,
-  process.env.CASHFREE_APP_ID,
-  process.env.CASHFREE_SECRET_KEY,
+  env.cashfree.appId,
+  env.cashfree.secretKey,
   undefined,
   undefined,
   undefined,

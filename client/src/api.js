@@ -1,4 +1,5 @@
-export const API_ORIGIN = "http://localhost:3000";
+// Served by the same Express app, so API calls go to whatever host the page came from.
+export const API_ORIGIN = window.location.origin;
 export const LOGIN_PAGE = "../login/login.html";
 
 export function logout() {

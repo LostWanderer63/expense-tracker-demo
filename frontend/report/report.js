@@ -1,4 +1,5 @@
-const API_ORIGIN = "http://localhost:3000";
+// Served by the same Express app, so API calls go to whatever host the page came from.
+const API_ORIGIN = window.location.origin;
 const LOGIN_PAGE = "../login/login.html";
 const INCOME_CATEGORIES = ["Salary"];
 const VIEWS = ["daily", "weekly", "monthly", "yearly"];

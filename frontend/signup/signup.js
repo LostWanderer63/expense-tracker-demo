@@ -1,4 +1,5 @@
-const API_URL = "http://localhost:3000/user/signup";
+// Served by the same Express app, so API calls go to whatever host the page came from.
+const API_URL = `${window.location.origin}/user/signup`;
 
 const form = document.getElementById("signupForm");
 const nameInput = document.getElementById("name");

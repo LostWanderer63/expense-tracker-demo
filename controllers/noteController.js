@@ -1,5 +1,6 @@
 const { sequelize } = require("../config/db");
 const { Note } = require("../models");
+const { logError } = require("../utils/logger");
 
 const NOTE_FIELDS = ["id", "noteDate", "text", "createdAt"];
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
@@ -24,7 +25,7 @@ async function getNotes(req, res) {
     });
     return res.status(200).json({ notes });
   } catch (err) {
-    console.error("Get notes error:", err);
+    logError(err, req, "Get notes error");
     return res.status(500).json({ message: "Could not load notes" });
   }
 }
@@ -53,7 +54,7 @@ async function addNote(req, res) {
     return res.status(201).json({ message: "Note added", note });
   } catch (err) {
     if (transaction && !transaction.finished) await transaction.rollback();
-    console.error("Add note error:", err);
+    logError(err, req, "Add note error");
     return res.status(500).json({ message: "Could not add note" });
   }
 }
@@ -74,7 +75,7 @@ async function deleteNote(req, res) {
     return res.status(200).json({ message: "Note deleted" });
   } catch (err) {
     if (transaction && !transaction.finished) await transaction.rollback();
-    console.error("Delete note error:", err);
+    logError(err, req, "Delete note error");
     return res.status(500).json({ message: "Could not delete note" });
   }
 }

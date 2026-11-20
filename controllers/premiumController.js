@@ -1,4 +1,5 @@
 const { User } = require("../models");
+const { logError } = require("../utils/logger");
 
 async function getLeaderboard(req, res) {
   try {
@@ -12,7 +13,7 @@ async function getLeaderboard(req, res) {
 
     return res.status(200).json({ leaderboard });
   } catch (err) {
-    console.error("Leaderboard error:", err);
+    logError(err, req, "Leaderboard error");
     return res.status(500).json({ message: "Could not load leaderboard" });
   }
 }

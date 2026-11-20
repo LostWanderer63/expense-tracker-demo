@@ -1,11 +1,9 @@
 const mysql = require("mysql2/promise");
 const { Sequelize } = require("sequelize");
 
-const DB_NAME = process.env.DB_NAME || "expense_tracker";
-const DB_HOST = process.env.DB_HOST || "localhost";
-const DB_PORT = Number(process.env.DB_PORT) || 3306;
-const DB_USER = process.env.DB_USER || "root";
-const DB_PASSWORD = process.env.DB_PASSWORD || "abcd@1234";
+const env = require("./env");
+
+const { name: DB_NAME, host: DB_HOST, port: DB_PORT, user: DB_USER, password: DB_PASSWORD } = env.db;
 
 function localOffset() {
   const minutes = -new Date().getTimezoneOffset();
@@ -20,7 +18,7 @@ const sequelize = new Sequelize(DB_NAME, DB_USER, DB_PASSWORD, {
   host: DB_HOST,
   port: DB_PORT,
   dialect: "mysql",
-  timezone: process.env.DB_TIMEZONE || localOffset(),
+  timezone: env.db.timezone || localOffset(),
   logging: false,
   dialectOptions: { decimalNumbers: true },
   pool: { max: 10, min: 0, idle: 10000 },

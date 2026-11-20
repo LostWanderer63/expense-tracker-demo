@@ -1,4 +1,5 @@
 const { User } = require("../models");
+const { logError } = require("../utils/logger");
 
 async function requirePremium(req, res, next) {
   try {
@@ -8,7 +9,7 @@ async function requirePremium(req, res, next) {
     }
     next();
   } catch (err) {
-    console.error("Premium check error:", err);
+    logError(err, req, "Premium check error");
     return res.status(500).json({ message: "Something went wrong. Please try again." });
   }
 }

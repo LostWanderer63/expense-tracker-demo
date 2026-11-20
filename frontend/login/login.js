@@ -1,4 +1,5 @@
-const API_ORIGIN = "http://localhost:3000";
+// Served by the same Express app, so API calls go to whatever host the page came from.
+const API_ORIGIN = window.location.origin;
 const API_URL = `${API_ORIGIN}/user/login`;
 
 if (localStorage.getItem("token")) {

@@ -2,6 +2,8 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { sequelize } = require("../config/db");
 const { User } = require("../models");
+const env = require("../config/env");
+const { logError } = require("../utils/logger");
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -27,7 +29,7 @@ async function signup(req, res) {
       return res.status(409).json({ message: "User already exists" });
     }
 
-    const hashed = await bcrypt.hash(password, 10);
+    const hashed = await bcrypt.hash(password, env.bcryptSaltRounds);
     transaction = await sequelize.transaction();
     const user = await User.create({ name, email, password: hashed }, { transaction });
     await transaction.commit();
@@ -41,7 +43,7 @@ async function signup(req, res) {
     if (err.name === "SequelizeUniqueConstraintError") {
       return res.status(409).json({ message: "User already exists" });
     }
-    console.error("Signup error:", err);
+    logError(err, req, "Signup error");
     return res.status(500).json({ message: "Something went wrong. Please try again." });
   }
 }
@@ -68,8 +70,8 @@ async function login(req, res) {
       return res.status(401).json({ message: "User not authorized" });
     }
 
-    const token = jwt.sign({ userId: user.id, name: user.name }, process.env.JWT_SECRET, {
-      expiresIn: "1d",
+    const token = jwt.sign({ userId: user.id, name: user.name }, env.jwt.secret, {
+      expiresIn: env.jwt.expiresIn,
     });
 
     return res.status(200).json({
@@ -78,7 +80,7 @@ async function login(req, res) {
       user: { id: user.id, name: user.name, email: user.email },
     });
   } catch (err) {
-    console.error("Login error:", err);
+    logError(err, req, "Login error");
     return res.status(500).json({ message: "Something went wrong. Please try again." });
   }
 }
@@ -93,7 +95,7 @@ async function getMe(req, res) {
       user: { id: user.id, name: user.name, email: user.email, isPremium: Boolean(user.isPremium) },
     });
   } catch (err) {
-    console.error("Get me error:", err);
+    logError(err, req, "Get me error");
     return res.status(500).json({ message: "Something went wrong. Please try again." });
   }
 }

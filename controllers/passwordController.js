@@ -2,18 +2,25 @@ const bcrypt = require("bcrypt");
 const { validate: isUuid } = require("uuid");
 const { sequelize } = require("../config/db");
 const { User, ForgotPasswordRequest } = require("../models");
+const env = require("../config/env");
 const emailService = require("../services/emailService");
+const logger = require("../utils/logger");
+const { logError } = logger;
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 6;
-const RESET_LINK_TTL_MS = 60 * 60 * 1000; // links work for 1 hour
+const RESET_LINK_TTL_MS = env.resetLinkTtlMinutes * 60 * 1000;
+const RESET_LINK_TTL_TEXT =
+  env.resetLinkTtlMinutes % 60 === 0
+    ? `${env.resetLinkTtlMinutes / 60} hour${env.resetLinkTtlMinutes === 60 ? "" : "s"}`
+    : `${env.resetLinkTtlMinutes} minutes`;
 
 // Same reply whether or not the email is registered, so this route
 // can't be used to find out which emails have accounts.
 const GENERIC_REPLY = "If an account exists for that email, a reset link has been sent.";
 
 function appUrl() {
-  return process.env.APP_URL || `http://localhost:${process.env.PORT || 3000}`;
+  return env.appUrl;
 }
 
 function escapeHtml(value) {
@@ -92,7 +99,7 @@ async function forgotPassword(req, res) {
     return res.status(400).json({ message: "Invalid email" });
   }
   if (!emailService.isConfigured()) {
-    console.error("Forgot password: BREVO_API_KEY or BREVO_SENDER_EMAIL is missing in .env");
+    logger.error("Forgot password: BREVO_API_KEY or BREVO_SENDER_EMAIL is missing in .env");
     return res.status(503).json({ message: "Password reset is not available right now" });
   }
 
@@ -116,18 +123,18 @@ async function forgotPassword(req, res) {
 <p>We received a request to reset your Expense Tracker password. Click the link below to choose a new one:</p>
 <p><a href="${resetUrl}">Reset my password</a></p>
 <p>Or paste this into your browser: ${resetUrl}</p>
-<p>This link works once and expires in 1 hour. If you didn't ask for this, you can ignore this email.</p>`,
+<p>This link works once and expires in ${RESET_LINK_TTL_TEXT}. If you didn't ask for this, you can ignore this email.</p>`,
         text:
           `Hi ${user.name},\n\nWe received a request to reset your Expense Tracker password.\n` +
           `Open this link to choose a new one:\n${resetUrl}\n\n` +
-          "This link works once and expires in 1 hour. If you didn't ask for this, you can ignore this email.",
+          `This link works once and expires in ${RESET_LINK_TTL_TEXT}. If you didn't ask for this, you can ignore this email.`,
       });
     }
 
     return res.status(200).json({ message: GENERIC_REPLY });
   } catch (err) {
     if (transaction && !transaction.finished) await transaction.rollback();
-    console.error("Forgot password error:", err.message || err);
+    logError(err, req, "Forgot password error");
     return res.status(500).json({ message: "Could not send reset email. Please try again." });
   }
 }
@@ -147,7 +154,7 @@ async function showResetForm(req, res) {
 
     return res.status(200).send(resetFormPage(request.id));
   } catch (err) {
-    console.error("Show reset form error:", err);
+    logError(err, req, "Show reset form error");
     return res.status(500).send(invalidLinkPage());
   }
 }
@@ -167,7 +174,7 @@ async function updatePassword(req, res) {
 
   let transaction;
   try {
-    const hashed = await bcrypt.hash(password, 10);
+    const hashed = await bcrypt.hash(password, env.bcryptSaltRounds);
 
     transaction = await sequelize.transaction();
     const request = await ForgotPasswordRequest.findByPk(id, {
@@ -191,7 +198,7 @@ async function updatePassword(req, res) {
     return res.status(200).json({ message: "Password updated. You can now log in." });
   } catch (err) {
     if (transaction && !transaction.finished) await transaction.rollback();
-    console.error("Update password error:", err);
+    logError(err, req, "Update password error");
     return res.status(500).json({ message: "Could not update password. Please try again." });
   }
 }

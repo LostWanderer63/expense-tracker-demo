@@ -1,17 +1,19 @@
 const { GoogleGenAI, Type } = require("@google/genai");
 
-const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const env = require("../config/env");
+
+const MODEL = env.gemini.model;
 const TIMEOUT_MS = 8000;
 
 let client = null;
 function getClient() {
-  if (!process.env.GEMINI_API_KEY) return null;
-  if (!client) client = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  if (!env.gemini.apiKey) return null;
+  if (!client) client = new GoogleGenAI({ apiKey: env.gemini.apiKey });
   return client;
 }
 
 function isConfigured() {
-  return Boolean(process.env.GEMINI_API_KEY);
+  return Boolean(env.gemini.apiKey);
 }
 
 /**

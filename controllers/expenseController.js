@@ -1,6 +1,7 @@
 const { sequelize } = require("../config/db");
 const { User, Expense } = require("../models");
 const geminiCategorizer = require("../services/geminiCategorizer");
+const { logError } = require("../utils/logger");
 
 const CATEGORIES = [
   "Food",
@@ -109,7 +110,7 @@ async function getExpenses(req, res) {
       summary,
     });
   } catch (err) {
-    console.error("Get expenses error:", err);
+    logError(err, req, "Get expenses error");
     return res.status(500).json({ message: "Could not load expenses" });
   }
 }
@@ -159,7 +160,7 @@ async function addExpense(req, res) {
     return res.status(201).json({ message: "Expense added", expense });
   } catch (err) {
     if (transaction && !transaction.finished) await transaction.rollback();
-    console.error("Add expense error:", err);
+    logError(err, req, "Add expense error");
     return res.status(500).json({ message: "Could not add expense" });
   }
 }
@@ -194,7 +195,7 @@ async function deleteExpense(req, res) {
     return res.status(200).json({ message: "Expense deleted" });
   } catch (err) {
     if (transaction && !transaction.finished) await transaction.rollback();
-    console.error("Delete expense error:", err);
+    logError(err, req, "Delete expense error");
     return res.status(500).json({ message: "Could not delete expense" });
   }
 }
@@ -219,7 +220,7 @@ async function suggestCategory(req, res) {
     }
     return res.status(200).json({ category });
   } catch (err) {
-    console.error("Suggest category error:", err.message || err);
+    logError(err, req, "Suggest category error");
     return res.status(502).json({ message: "Could not suggest a category" });
   }
 }

@@ -1,8 +1,9 @@
-const BREVO_URL = "https://api.brevo.com/v3/smtp/email";
+const env = require("../config/env");
+
 const TIMEOUT_MS = 10000;
 
 function isConfigured() {
-  return Boolean(process.env.BREVO_API_KEY && process.env.BREVO_SENDER_EMAIL);
+  return Boolean(env.brevo.apiKey && env.brevo.senderEmail);
 }
 
 /**
@@ -10,17 +11,17 @@ function isConfigured() {
  * Throws if Brevo rejects the request.
  */
 async function sendEmail({ to, subject, html, text }) {
-  const res = await fetch(BREVO_URL, {
+  const res = await fetch(env.brevo.apiUrl, {
     method: "POST",
     headers: {
-      "api-key": process.env.BREVO_API_KEY,
+      "api-key": env.brevo.apiKey,
       "Content-Type": "application/json",
       accept: "application/json",
     },
     body: JSON.stringify({
       sender: {
-        email: process.env.BREVO_SENDER_EMAIL,
-        name: process.env.BREVO_SENDER_NAME || "Expense Tracker",
+        email: env.brevo.senderEmail,
+        name: env.brevo.senderName,
       },
       to: [{ email: to.email, name: to.name }],
       subject,

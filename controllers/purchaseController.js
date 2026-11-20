@@ -1,9 +1,11 @@
 const crypto = require("crypto");
 const { sequelize } = require("../config/db");
 const { User, Order } = require("../models");
+const env = require("../config/env");
 const { cashfree, environment, CFEnvironment } = require("../config/cashfree");
+const { logError } = require("../utils/logger");
 
-const PREMIUM_PRICE = 499;
+const PREMIUM_PRICE = env.premiumPrice;
 
 function cashfreeError(err) {
   return err.response?.data?.message || err.message;
@@ -19,7 +21,7 @@ async function createPremiumOrder(req, res) {
     if (user.isPremium) return res.status(400).json({ message: "You are already a premium member" });
 
     const orderId = `order_${user.id}_${Date.now()}_${crypto.randomBytes(3).toString("hex")}`;
-    const appUrl = process.env.APP_URL || `http://localhost:${process.env.PORT || 3000}`;
+    const appUrl = env.appUrl;
 
     const { data } = await cashfree.PGCreateOrder({
       order_id: orderId,
@@ -57,7 +59,7 @@ async function createPremiumOrder(req, res) {
     });
   } catch (err) {
     if (transaction && !transaction.finished) await transaction.rollback();
-    console.error("Create order error:", cashfreeError(err));
+    logError(err, req, `Create order error: ${cashfreeError(err)}`);
     return res.status(500).json({ message: "Could not start payment. Please try again." });
   }
 }
@@ -93,7 +95,7 @@ async function getOrderStatus(req, res) {
     return res.status(200).json({ orderId, status });
   } catch (err) {
     if (transaction && !transaction.finished) await transaction.rollback();
-    console.error("Order status error:", cashfreeError(err));
+    logError(err, req, `Order status error: ${cashfreeError(err)}`);
     return res.status(500).json({ message: "Could not verify payment" });
   }
 }
