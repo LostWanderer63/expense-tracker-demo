@@ -68,6 +68,15 @@ const env = {
     senderName: optional("BREVO_SENDER_NAME", "Expense Tracker"),
   },
 
+  aws: {
+    region: optional("AWS_REGION", "ap-south-1"),
+    accessKeyId: optional("AWS_ACCESS_KEY_ID"),
+    secretAccessKey: optional("AWS_SECRET_ACCESS_KEY"),
+    bucket: optional("AWS_S3_BUCKET"),
+    // How long the download link stays valid.
+    urlExpiresSeconds: number("S3_URL_EXPIRES_SECONDS", 300),
+  },
+
   log: {
     level: optional("LOG_LEVEL", "http"),
     dir: optional("LOG_DIR", "logs"),

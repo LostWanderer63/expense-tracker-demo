@@ -36,7 +36,6 @@ let notesLoaded = false;
 let view = readView();
 let cursor = startOfDay(new Date());
 let isPremium = false;
-let currentRows = { columns: [], rows: [] }; // what the table shows, for the download
 
 // ---------- helpers ----------
 
@@ -153,7 +152,6 @@ function renderDetail(list) {
     });
 
   const tbody = el("tbody");
-  const exportRows = [];
   let totalIncome = 0;
   let totalExpense = 0;
 
@@ -171,7 +169,6 @@ function renderDetail(list) {
       ]);
       if (e.note) tr.children[1].appendChild(el("span", "row-note", e.note));
       tbody.appendChild(tr);
-      exportRows.push([date, e.description, e.category, e.isIncome ? e.amount : "", e.isIncome ? "" : e.amount, e.note || ""]);
       if (e.isIncome) dayIncome += e.amount;
       else dayExpense += e.amount;
     });
@@ -201,8 +198,6 @@ function renderDetail(list) {
     tfoot
   );
 
-  exportRows.push(["Total", "", "", totalIncome, totalExpense], ["Savings", "", "", "", totalIncome - totalExpense]);
-  currentRows = { columns: ["Date", "Description", "Category", "Income", "Expense", "Note"], rows: exportRows };
 }
 
 function renderYearly(list, year) {
@@ -215,7 +210,6 @@ function renderYearly(list, year) {
   });
 
   const tbody = el("tbody");
-  const exportRows = [];
   let income = 0;
   let expense = 0;
   months.forEach((m, i) => {
@@ -229,7 +223,6 @@ function renderYearly(list, year) {
         [money.format(m.income - m.expense), "num"],
       ])
     );
-    exportRows.push([name, m.income, m.expense, m.income - m.expense]);
     income += m.income;
     expense += m.expense;
   });
@@ -253,8 +246,6 @@ function renderYearly(list, year) {
     tfoot
   );
 
-  exportRows.push(["Total", income, expense, income - expense]);
-  currentRows = { columns: ["Month", "Income", "Expense", "Savings"], rows: exportRows };
 }
 
 let loaded = false;
@@ -277,53 +268,48 @@ function render() {
 
   emptyState.classList.toggle("hidden", list.length > 0);
   tableWrap.classList.toggle("hidden", list.length === 0);
-  if (!list.length) {
-    currentRows = { columns: [], rows: [] };
-  } else if (view === "yearly") {
-    renderYearly(list, start.getFullYear());
-  } else {
-    renderDetail(list);
+  if (list.length) {
+    if (view === "yearly") renderYearly(list, start.getFullYear());
+    else renderDetail(list);
   }
   renderNotes();
   updateDownloadButton();
 }
 
 // ---------- download (premium) ----------
+// The backend builds a file of ALL the user's expenses, stores it in S3 and
+// returns a short-lived link, which the browser then downloads.
 
 function updateDownloadButton() {
-  downloadBtn.disabled = !isPremium || currentRows.rows.length === 0;
-  downloadBtn.title = !isPremium
-    ? "Download is available for premium members"
-    : currentRows.rows.length === 0
-      ? "Nothing to download for this period"
-      : "Download this report as a CSV file";
+  downloadBtn.disabled = !isPremium;
+  downloadBtn.title = isPremium
+    ? "Download all your expenses as a CSV file"
+    : "Download is available for premium members";
   downloadNote.classList.toggle("hidden", isPremium);
 }
 
-function csvCell(value) {
-  const s = String(value);
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-}
-
-downloadBtn.addEventListener("click", () => {
-  if (!isPremium || !currentRows.rows.length) return;
-  const periodNotes = notesInPeriod();
-  const noteRows = periodNotes.length
-    ? [[], ["Notes"], ["Date", "Note"], ...periodNotes.map((n) => [noteDateText(n.noteDate), n.text])]
-    : [];
-  const lines = [currentRows.columns, ...currentRows.rows, ...noteRows].map((r) =>
-    r.map(csvCell).join(",")
-  );
-  const blob = new Blob([`﻿${lines.join("\n")}`], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = el("a");
-  a.href = url;
-  a.download = `expenses-${view}-${dayKey(periodRange()[0])}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-  toast("Report downloaded");
+downloadBtn.addEventListener("click", async () => {
+  if (!isPremium) return;
+  downloadBtn.disabled = true;
+  try {
+    const { fileUrl } = await fetchJSON("/expense/download");
+    const a = el("a");
+    a.href = fileUrl;
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    toast("Download started");
+  } catch (err) {
+    if (err.code === "PREMIUM_REQUIRED") {
+      isPremium = false;
+      toast("Download is available for premium members", "error");
+    } else {
+      toast(err.message, "error");
+    }
+  } finally {
+    updateDownloadButton();
+  }
 });
 
 // ---------- data ----------
@@ -344,11 +330,16 @@ async function fetchJSON(path, options = {}) {
     },
   });
   const body = await res.json().catch(() => ({}));
-  if (res.status === 401) {
+  // 401 normally means the login expired, except the premium-only reply.
+  if (res.status === 401 && body.code !== "PREMIUM_REQUIRED") {
     logout();
     throw new Error(body.message || "Session expired");
   }
-  if (!res.ok) throw new Error(body.message || `Request failed (${res.status})`);
+  if (!res.ok) {
+    const err = new Error(body.message || `Request failed (${res.status})`);
+    err.code = body.code;
+    throw err;
+  }
   return body;
 }
 

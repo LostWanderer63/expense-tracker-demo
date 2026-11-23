@@ -1,6 +1,8 @@
 const { sequelize } = require("../config/db");
 const { User, Expense } = require("../models");
 const geminiCategorizer = require("../services/geminiCategorizer");
+const s3Service = require("../services/s3Service");
+const { toCsv } = require("../utils/csv");
 const { logError } = require("../utils/logger");
 
 const CATEGORIES = [
@@ -225,4 +227,67 @@ async function suggestCategory(req, res) {
   }
 }
 
-module.exports = { getExpenses, addExpense, deleteExpense, suggestCategory, CATEGORIES };
+function pad(n) {
+  return String(n).padStart(2, "0");
+}
+
+function formatDateTime(date) {
+  const d = new Date(date);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// GET /expense/download (premium only): builds a CSV of all the user's
+// expenses, stores it in S3 and returns a short-lived download link.
+async function downloadExpenses(req, res) {
+  if (!s3Service.isConfigured()) {
+    return res.status(503).json({ message: "File downloads are not configured" });
+  }
+
+  try {
+    const expenses = await Expense.findAll({
+      where: { userId: req.user.id },
+      attributes: EXPENSE_FIELDS,
+      order: [["createdAt", "DESC"], ["id", "DESC"]],
+      raw: true,
+    });
+
+    const total = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
+    const csv = toCsv([
+      ["Date", "Description", "Category", "Note", "Amount"],
+      ...expenses.map((e) => [
+        formatDateTime(e.createdAt),
+        e.description,
+        e.category,
+        e.note || "",
+        Number(e.amount).toFixed(2),
+      ]),
+      [],
+      ["Total", "", "", "", total.toFixed(2)],
+    ]);
+
+    const now = new Date();
+    const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+    const fileName = `expenses-${stamp}.csv`;
+
+    const fileUrl = await s3Service.uploadAndGetUrl({
+      key: `expense-reports/user-${req.user.id}/${fileName}`,
+      body: csv,
+      contentType: "text/csv; charset=utf-8",
+      downloadName: fileName,
+    });
+
+    return res.status(200).json({ fileUrl, fileName, count: expenses.length });
+  } catch (err) {
+    logError(err, req, "Download expenses error");
+    return res.status(500).json({ message: "Could not create the download. Please try again." });
+  }
+}
+
+module.exports = {
+  getExpenses,
+  addExpense,
+  deleteExpense,
+  suggestCategory,
+  downloadExpenses,
+  CATEGORIES,
+};
