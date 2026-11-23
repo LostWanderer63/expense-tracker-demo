@@ -10,7 +10,8 @@
     "predev": "npm run build",
     "dev": "nodemon index.js --ignore client/ --ignore frontend/ --ignore logs/",
     "migrate": "sequelize-cli db:migrate",
-    "migrate:undo": "sequelize-cli db:migrate:undo"
+    "migrate:undo": "sequelize-cli db:migrate:undo",
+    "check": "node scripts/check-syntax.js"
   },
   "keywords": [],
   "author": "",
