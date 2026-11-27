@@ -18,7 +18,9 @@ async function createPremiumOrder(req, res) {
       attributes: ["id", "name", "email", "isPremium"],
     });
     if (!user) return res.status(404).json({ message: "User not found" });
-    if (user.isPremium) return res.status(400).json({ message: "You are already a premium member" });
+    if (user.isPremium || (await reconcilePendingOrders(user.id))) {
+      return res.status(400).json({ message: "You are already a premium member" });
+    }
 
     const orderId = `order_${user.id}_${Date.now()}_${crypto.randomBytes(3).toString("hex")}`;
     const appUrl = env.appUrl;
@@ -64,9 +66,58 @@ async function createPremiumOrder(req, res) {
   }
 }
 
+// Asks Cashfree how a PENDING order went and saves the result.
+// With an empty payment list the order counts as FAILED, unless `graceMs` says
+// the customer may still be on the checkout page.
+async function syncOrder(order, { graceMs = 0 } = {}) {
+  const { data: payments } = await cashfree.PGOrderFetchPayments(order.orderId);
+
+  let status;
+  if (payments.some((p) => p.payment_status === "SUCCESS")) status = "SUCCESSFUL";
+  else if (payments.some((p) => p.payment_status === "PENDING")) status = "PENDING";
+  else if (Date.now() - new Date(order.createdAt).getTime() < graceMs) status = "PENDING";
+  else status = "FAILED";
+
+  if (status !== "PENDING") {
+    const transaction = await sequelize.transaction();
+    try {
+      await order.update({ status }, { transaction });
+      if (status === "SUCCESSFUL") {
+        await User.update({ isPremium: true }, { where: { id: order.userId }, transaction });
+      }
+      await transaction.commit();
+    } catch (err) {
+      await transaction.rollback();
+      throw err;
+    }
+  }
+  return status;
+}
+
+const RECONCILE_GRACE_MS = 30 * 60 * 1000;
+const RECONCILE_LIMIT = 5;
+
+// Settles a user's open orders, e.g. someone who paid but closed the tab before
+// Cashfree redirected back. Returns true if one of them turned out to be paid.
+async function reconcilePendingOrders(userId) {
+  const orders = await Order.findAll({
+    where: { userId, status: "PENDING" },
+    order: [["createdAt", "DESC"]],
+    limit: RECONCILE_LIMIT,
+  });
+  let paid = false;
+  for (const order of orders) {
+    try {
+      if ((await syncOrder(order, { graceMs: RECONCILE_GRACE_MS })) === "SUCCESSFUL") paid = true;
+    } catch (err) {
+      logError(err, null, `Reconcile order ${order.orderId} error: ${cashfreeError(err)}`, "warn");
+    }
+  }
+  return paid;
+}
+
 async function getOrderStatus(req, res) {
   const orderId = req.params.orderId;
-  let transaction;
 
   try {
     const order = await Order.findOne({ where: { orderId, userId: req.user.id } });
@@ -76,28 +127,12 @@ async function getOrderStatus(req, res) {
       return res.status(200).json({ orderId, status: order.status });
     }
 
-    const { data: payments } = await cashfree.PGOrderFetchPayments(orderId);
-
-    let status;
-    if (payments.some((p) => p.payment_status === "SUCCESS")) status = "SUCCESSFUL";
-    else if (payments.some((p) => p.payment_status === "PENDING")) status = "PENDING";
-    else status = "FAILED";
-
-    if (status !== "PENDING") {
-      transaction = await sequelize.transaction();
-      await order.update({ status }, { transaction });
-      if (status === "SUCCESSFUL") {
-        await User.update({ isPremium: true }, { where: { id: req.user.id }, transaction });
-      }
-      await transaction.commit();
-    }
-
+    const status = await syncOrder(order);
     return res.status(200).json({ orderId, status });
   } catch (err) {
-    if (transaction && !transaction.finished) await transaction.rollback();
     logError(err, req, `Order status error: ${cashfreeError(err)}`);
     return res.status(500).json({ message: "Could not verify payment" });
   }
 }
 
-module.exports = { createPremiumOrder, getOrderStatus };
+module.exports = { createPremiumOrder, getOrderStatus, reconcilePendingOrders };

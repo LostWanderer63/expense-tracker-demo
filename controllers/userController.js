@@ -4,6 +4,7 @@ const { sequelize } = require("../config/db");
 const { User } = require("../models");
 const env = require("../config/env");
 const { logError } = require("../utils/logger");
+const { reconcilePendingOrders } = require("./purchaseController");
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -91,8 +92,10 @@ async function getMe(req, res) {
       attributes: ["id", "name", "email", "isPremium"],
     });
     if (!user) return res.status(404).json({ message: "User not found" });
+    // Picks up a payment whose redirect back to the app never happened.
+    const isPremium = Boolean(user.isPremium) || (await reconcilePendingOrders(user.id));
     return res.status(200).json({
-      user: { id: user.id, name: user.name, email: user.email, isPremium: Boolean(user.isPremium) },
+      user: { id: user.id, name: user.name, email: user.email, isPremium },
     });
   } catch (err) {
     logError(err, req, "Get me error");

@@ -34,6 +34,11 @@ app.use(
   })
 );
 app.use(express.json());
+// Express 5 leaves req.body undefined when no parser matched (e.g. no JSON content type).
+app.use((req, res, next) => {
+  if (req.body === undefined) req.body = {};
+  next();
+});
 
 app.get("/", (req, res) => res.redirect("/login/login.html"));
 app.use(express.static(path.join(__dirname, "frontend")));
