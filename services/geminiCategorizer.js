@@ -49,7 +49,7 @@ async function suggestCategory(description, categories) {
       },
       temperature: 0,
       maxOutputTokens: 50,
-      thinkingConfig: { thinkingBudget: 0 },
+      thinkingConfig: { thinkingLevel: "minimal" },
       abortSignal: AbortSignal.timeout(TIMEOUT_MS),
     },
   });

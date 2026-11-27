@@ -58,7 +58,7 @@ const env = {
 
   gemini: {
     apiKey: optional("GEMINI_API_KEY"),
-    model: optional("GEMINI_MODEL", "gemini-2.5-flash"),
+    model: optional("GEMINI_MODEL", "gemini-3.5-flash-lite"),
   },
 
   brevo: {
